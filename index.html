@@ -26,7 +26,7 @@ canvas { cursor:crosshair; display:block; }
 </head>
 <body>
 <div id="hdr">⛏ SPIN MINER</div>
-<div id="hint">클릭/드래그로 이동 · 곡괭이 자동 회전 · 대형 광물은 빨간 약점을 공격해 균열 게이지를 채우세요</div>
+<div id="hint">클릭/드래그로 이동 · 6개의 곡괭이 자동 회전 · 광석을 싣고 BASE로 돌아가 카고를 비우세요</div>
 <canvas id="c"></canvas>
 <script>
 const c = document.getElementById('c');
@@ -79,6 +79,10 @@ function drawPoly(x,y,r,sides,a0,fill){
   ctx.strokeStyle='rgba(255,255,255,0.22)';ctx.lineWidth=2;ctx.stroke();
 }
 
+function mineralNumber(hp){
+  return Math.max(1, Math.ceil(hp/10)) + 'A';
+}
+
 /* ───── Mineral ───── */
 class Mineral {
   constructor(o){
@@ -97,6 +101,7 @@ class Mineral {
       this.crack  = 0;
       this.wAng   = Math.random()*6.28;
       this.wPulse = 0;
+      this.wMoveTick = 0;
       this.cLines = Array.from({length:9},()=>({a:Math.random()*6.28,len:.2+Math.random()*.65}));
     }
   }
@@ -107,13 +112,16 @@ class Mineral {
     if(this.type==='large'){
       if(isWeak){
         const old=this.crack;
-        this.crack=Math.min(100,this.crack+2.5);
-        spawnPts(this.wx,this.wy,'#f80',3);
+        this.crack=Math.min(100,this.crack+3.5);
+        const dmg=this.crack>=100?this.spd*8:this.spd*3.4;
+        this.hp-=dmg;
+        spawnPts(this.wx,this.wy,'#f80',4);
         if(this.crack>=100&&old<100){shake(10);spawnPts(this.x,this.y,'#ff0',25);}
       } else {
-        const dmg=this.crack>=100?this.spd*6:this.spd*.22;
+        const dmg=this.crack>=100?this.spd*5:this.spd*.75;
         this.hp-=dmg;
         if(this.crack>=100) spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,'#ff8',2);
+        else spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,this.col,1);
       }
     } else {
       this.hp-=this.spd;
@@ -129,7 +137,15 @@ class Mineral {
 
   update(){
     this.ang+=this.spin;
-    if(this.type==='large') this.wPulse+=.05;
+    if(this.type==='large'){
+      this.wPulse+=.05;
+      this.wMoveTick++;
+      if(this.wMoveTick>210){
+        this.wMoveTick=0;
+        this.wAng=Math.random()*6.28;
+        spawnPts(this.wx,this.wy,'#f44',10);
+      }
+    }
   }
 
   draw(){
@@ -183,6 +199,13 @@ class Mineral {
       ctx.moveTo(this.wx+5,this.wy-5);ctx.lineTo(this.wx-5,this.wy+5);
       ctx.stroke();
 
+      ctx.save();
+      ctx.fillStyle='#fff';ctx.font='bold 17px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.75)';
+      ctx.strokeText(mineralNumber(this.hp),this.x,this.y);
+      ctx.fillText(mineralNumber(this.hp),this.x,this.y);
+      ctx.restore();
+
       /* crack gauge */
       const gW=this.r*2+12,gH=9;
       const gx=this.x-gW/2, gy=this.y+this.r+11;
@@ -213,6 +236,12 @@ class Mineral {
         ctx.fillStyle=hr>.5?'#4d4':'#d44';
         ctx.fillRect(bx,by,bW*hr,4);
       }
+      ctx.save();
+      ctx.fillStyle='#fff';ctx.font='bold 13px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.lineWidth=3;ctx.strokeStyle='rgba(0,0,0,.75)';
+      ctx.strokeText(mineralNumber(this.hp),this.x,this.y);
+      ctx.fillText(mineralNumber(this.hp),this.x,this.y);
+      ctx.restore();
     }
   }
 }
@@ -222,7 +251,7 @@ const plr={
   x:W/2, y:H-95,
   tx:W/2, ty:H-95,
   spd:3.8, r:16,
-  pAng:0, pSpd:.09, pOrbit:33, pLen:14,
+  pAng:0, pSpd:.09, pOrbit:33, pLen:14, pickCount:6,
 
   update(){
     const dx=this.tx-this.x,dy=this.ty-this.y,d=Math.hypot(dx,dy);
@@ -230,11 +259,40 @@ const plr={
     this.pAng+=this.pSpd;
   },
 
-  tip(){
-    return{
-      x:this.x+Math.cos(this.pAng)*(this.pOrbit+this.pLen),
-      y:this.y+Math.sin(this.pAng)*(this.pOrbit+this.pLen),
-    };
+  tips(){
+    const out=[];
+    for(let i=0;i<this.pickCount;i++){
+      const a=this.pAng+i/this.pickCount*6.28;
+      out.push({
+        x:this.x+Math.cos(a)*(this.pOrbit+this.pLen),
+        y:this.y+Math.sin(a)*(this.pOrbit+this.pLen),
+        a,
+      });
+    }
+    return out;
+  },
+
+  drawPickaxe(a){
+    const ax=this.x+Math.cos(a)*this.pOrbit;
+    const ay=this.y+Math.sin(a)*this.pOrbit;
+    ctx.beginPath();ctx.moveTo(this.x,this.y);ctx.lineTo(ax,ay);
+    ctx.strokeStyle='rgba(120,120,120,.75)';ctx.lineWidth=2.5;ctx.stroke();
+
+    ctx.save();
+    ctx.translate(ax,ay);ctx.rotate(a+Math.PI/4);
+    ctx.beginPath();
+    ctx.moveTo(-9,2);ctx.lineTo(9,2);ctx.lineTo(13,-5);
+    ctx.lineTo(7,-2);ctx.lineTo(1,-2);ctx.lineTo(1,-13);
+    ctx.lineTo(-3,-9);ctx.lineTo(-3,-2);ctx.closePath();
+    ctx.fillStyle='#ccc';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
+    ctx.beginPath();ctx.moveTo(13,-5);ctx.lineTo(7,-2);
+    ctx.strokeStyle='#ff8';ctx.lineWidth=2;ctx.stroke();
+    ctx.restore();
+
+    const tx=this.x+Math.cos(a)*(this.pOrbit+this.pLen);
+    const ty=this.y+Math.sin(a)*(this.pOrbit+this.pLen);
+    ctx.beginPath();ctx.arc(tx,ty,3.5,0,6.28);
+    ctx.fillStyle='rgba(255,220,80,.55)';ctx.fill();
   },
 
   draw(){
@@ -253,28 +311,7 @@ const plr={
     ctx.beginPath();ctx.arc(this.x,this.y,this.pOrbit,0,6.28);
     ctx.strokeStyle='rgba(100,180,255,.07)';ctx.lineWidth=1;ctx.stroke();
 
-    /* arm */
-    const ax=this.x+Math.cos(this.pAng)*this.pOrbit;
-    const ay=this.y+Math.sin(this.pAng)*this.pOrbit;
-    ctx.beginPath();ctx.moveTo(this.x,this.y);ctx.lineTo(ax,ay);
-    ctx.strokeStyle='#666';ctx.lineWidth=3;ctx.stroke();
-
-    /* pickaxe head */
-    ctx.save();
-    ctx.translate(ax,ay);ctx.rotate(this.pAng+Math.PI/4);
-    ctx.beginPath();
-    ctx.moveTo(-9,2);ctx.lineTo(9,2);ctx.lineTo(13,-5);
-    ctx.lineTo(7,-2);ctx.lineTo(1,-2);ctx.lineTo(1,-13);
-    ctx.lineTo(-3,-9);ctx.lineTo(-3,-2);ctx.closePath();
-    ctx.fillStyle='#ccc';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1;ctx.stroke();
-    ctx.beginPath();ctx.moveTo(13,-5);ctx.lineTo(7,-2);
-    ctx.strokeStyle='#ff8';ctx.lineWidth=2;ctx.stroke();
-    ctx.restore();
-
-    /* tip glow */
-    const t=this.tip();
-    ctx.beginPath();ctx.arc(t.x,t.y,4,0,6.28);
-    ctx.fillStyle='rgba(255,220,80,.55)';ctx.fill();
+    for(let i=0;i<this.pickCount;i++) this.drawPickaxe(this.pAng+i/this.pickCount*6.28);
 
     /* body */
     ctx.save();ctx.shadowColor='#4af';ctx.shadowBlur=14;
@@ -283,6 +320,15 @@ const plr={
     ctx.restore();
     ctx.beginPath();ctx.arc(this.x-4,this.y-4,5,0,6.28);
     ctx.fillStyle='rgba(255,255,255,.32)';ctx.fill();
+
+    const stones=Math.min(6,Math.ceil(playerCargo/CARRY_MAX*6));
+    for(let i=0;i<stones;i++){
+      const ox=-15+i*6;
+      const oy=18+(i%2)*3;
+      ctx.beginPath();ctx.arc(this.x+ox,this.y+oy,4,0,6.28);
+      ctx.fillStyle=i%2?'#7bdcff':'#f6b04a';
+      ctx.fill();ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=1;ctx.stroke();
+    }
   }
 };
 
@@ -302,9 +348,10 @@ const base={x:W/2,y:H-40,r:28,pulse:0,
 
 /* ───── Game state ───── */
 let minerals=[];
-let state='playing'; // playing | returning | cleared
-let chapter=1, cargo=0, score=0;
+let state='playing'; // playing | cleared
+let chapter=1, deliveredCargo=0, playerCargo=0, score=0;
 const CARGO_MAX=100;
+const CARRY_MAX=40;
 
 function spawnMinerals(){
   minerals=[];
@@ -321,7 +368,7 @@ function spawnMinerals(){
     }while(tries<30&&(minerals.some(m=>Math.hypot(m.x-x,m.y-y)<68)||Math.hypot(x-base.x,y-base.y)<85));
     minerals.push(new Mineral({
       x,y,type:'normal',
-      r:15+Math.random()*10,
+      r:(15+Math.random()*10)*1.2,
       sides:nSides[Math.floor(Math.random()*nSides.length)],
       col:nCols[Math.floor(Math.random()*nCols.length)],
       hp:60+Math.random()*50,
@@ -341,7 +388,7 @@ function spawnMinerals(){
     }while(tries<40&&(minerals.some(m=>Math.hypot(m.x-x,m.y-y)<115)||Math.hypot(x-base.x,y-base.y)<115));
     minerals.push(new Mineral({
       x,y,type:'large',
-      r:42+Math.random()*10,
+      r:(42+Math.random()*10)*1.2,
       sides:6,
       col:lCols[i%lCols.length],
       hp:240+chapter*20,
@@ -352,26 +399,39 @@ function spawnMinerals(){
 }
 
 /* ───── Mining ───── */
+function collectOre(val){
+  const free=CARRY_MAX-playerCargo;
+  if(free<=0) return;
+  const gained=Math.min(free,val);
+  playerCargo+=gained;
+  score+=gained;
+}
+
 function checkMining(){
   if(state!=='playing') return;
-  const t=plr.tip();
+  if(playerCargo>=CARRY_MAX) return;
+  const tips=plr.tips();
 
   for(const m of minerals){
     if(m.mined) continue;
-    const d=Math.hypot(t.x-m.x,t.y-m.y);
+    for(const t of tips){
+      const d=Math.hypot(t.x-m.x,t.y-m.y);
 
-    if(m.type==='large'){
-      const wd=Math.hypot(t.x-m.wx,t.y-m.wy);
-      if(wd<15){
-        if(m.hit(true)){cargo=Math.min(CARGO_MAX,cargo+m.val);score+=m.val;}
-        continue;
-      }
-      if(d<m.r+2){
-        if(m.hit(false)){cargo=Math.min(CARGO_MAX,cargo+m.val);score+=m.val;}
-      }
-    } else {
-      if(d<m.r+6){
-        if(m.hit()){cargo=Math.min(CARGO_MAX,cargo+m.val);score+=m.val;}
+      if(m.type==='large'){
+        const wd=Math.hypot(t.x-m.wx,t.y-m.wy);
+        if(wd<17){
+          if(m.hit(true)) collectOre(m.val);
+          break;
+        }
+        if(d<m.r+2){
+          if(m.hit(false)) collectOre(m.val);
+          break;
+        }
+      } else {
+        if(d<m.r+6){
+          if(m.hit()) collectOre(m.val);
+          break;
+        }
       }
     }
   }
@@ -393,20 +453,20 @@ function drawHUD(){
   /* cargo bar */
   const gW=260,gH=22,gx=W/2-gW/2,gy=H-26;
   ctx.fillStyle='#111';ctx.fillRect(gx-2,gy-2,gW+4,gH+4);
-  const cr=cargo/CARGO_MAX;
+  const cr=deliveredCargo/CARGO_MAX;
   const cg=ctx.createLinearGradient(gx,0,gx+gW,0);
   cg.addColorStop(0,cr>=1?'#f80':'#3a7cc0');
   cg.addColorStop(1,cr>=1?'#ff0':'#7abff0');
   ctx.fillStyle=cg;ctx.fillRect(gx,gy,gW*cr,gH);
   ctx.strokeStyle='#666';ctx.lineWidth=2;ctx.strokeRect(gx,gy,gW,gH);
   ctx.fillStyle='#fff';ctx.font='bold 12px Arial';ctx.textAlign='center';
-  if(cargo>=CARGO_MAX){
+  if(deliveredCargo>=CARGO_MAX){
     const f=.45+Math.sin(Date.now()/180)*.3;
     ctx.fillStyle=`rgba(255,150,0,${f})`;ctx.fillRect(gx,gy,gW,gH);
     ctx.fillStyle='#fff';ctx.font='bold 12px Arial';ctx.textAlign='center';
-    ctx.fillText('화물 가득! 기지(BASE)로 귀환하세요!',W/2,gy+15);
+    ctx.fillText('BASE 카고 가득!',W/2,gy+15);
   } else {
-    ctx.fillText('화물 '+Math.floor(cargo)+' / '+CARGO_MAX,W/2,gy+15);
+    ctx.fillText('BASE 카고 '+Math.floor(deliveredCargo)+' / '+CARGO_MAX,W/2,gy+15);
   }
 
   /* chapter / score */
@@ -421,11 +481,27 @@ function drawHUD(){
   ctx.fillStyle='#ddd';ctx.font='13px Arial';ctx.textAlign='right';
   ctx.fillText('광물 잔여: '+rem,W-8,25);
 
-  /* returning banner */
-  if(state==='returning'){
-    ctx.fillStyle='rgba(255,120,0,.88)';ctx.fillRect(W/2-145,10,290,32);
-    ctx.fillStyle='#000';ctx.font='bold 14px Arial';ctx.textAlign='center';
-    ctx.fillText('화물 가득! 기지로 귀환 중...',W/2,30);
+  /* player cargo */
+  ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(W-132,40,126,28);
+  ctx.fillStyle=playerCargo>=CARRY_MAX?'#ffb347':'#9fd';
+  ctx.font='13px Arial';ctx.textAlign='right';
+  ctx.fillText('내 카고: '+Math.floor(playerCargo)+' / '+CARRY_MAX,W-8,59);
+
+  if(playerCargo>=CARRY_MAX){
+    const bx=Math.min(W-230,Math.max(20,plr.x-88));
+    const by=Math.max(18,plr.y-82);
+    ctx.save();
+    ctx.fillStyle='rgba(255,255,255,.94)';
+    ctx.strokeStyle='#ff9f1a';ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.roundRect(bx,by,210,38,10);
+    ctx.fill();ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(plr.x-10,by+38);ctx.lineTo(plr.x+10,by+38);ctx.lineTo(plr.x,by+50);
+    ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle='#251400';ctx.font='bold 13px Arial';ctx.textAlign='center';
+    ctx.fillText('베이스로 가 카고를 비우세요!',bx+105,by+24);
+    ctx.restore();
   }
 
   /* cleared overlay */
@@ -443,7 +519,6 @@ function drawHUD(){
 /* ───── Input ───── */
 c.addEventListener('mousedown',e=>{
   if(state==='cleared'){nextChapter();return;}
-  if(state==='returning') return;
   const r=c.getBoundingClientRect();
   plr.tx=e.clientX-r.left;plr.ty=e.clientY-r.top;
 });
@@ -454,7 +529,7 @@ c.addEventListener('mousemove',e=>{
 });
 
 function nextChapter(){
-  chapter++;state='playing';cargo=0;
+  chapter++;state='playing';deliveredCargo=0;playerCargo=0;
   plr.x=W/2;plr.y=H-95;plr.tx=W/2;plr.ty=H-95;
   spawnMinerals();
 }
@@ -471,15 +546,13 @@ function loop(){
     plr.update();
     checkMining();
 
-    if(cargo>=CARGO_MAX&&state==='playing'){
-      state='returning';plr.tx=base.x;plr.ty=base.y;
+    if(playerCargo>0&&Math.hypot(plr.x-base.x,plr.y-base.y)<base.r+plr.r){
+      deliveredCargo=Math.min(CARGO_MAX,deliveredCargo+playerCargo);
+      spawnPts(base.x,base.y,'#fa0',Math.min(18,4+Math.floor(playerCargo/3)));
+      playerCargo=0;
     }
-    if(state==='returning'){
-      if(Math.hypot(plr.x-base.x,plr.y-base.y)<base.r+plr.r){
-        cargo=0;state='playing';
-      }
-    }
-    if(state==='playing'&&minerals.length>0&&minerals.every(m=>m.mined)){
+
+    if(state==='playing'&&minerals.length>0&&minerals.every(m=>m.mined)&&playerCargo<=0){
       state='cleared';
     }
   }
