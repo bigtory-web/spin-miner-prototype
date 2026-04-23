@@ -26,7 +26,7 @@ canvas { cursor:crosshair; display:block; }
 </head>
 <body>
 <div id="hdr">⛏ SPIN MINER</div>
-<div id="hint">클릭/드래그로 이동 · 6개의 곡괭이 자동 회전 · 광석을 싣고 BASE로 돌아가 카고를 비우세요</div>
+<div id="hint">WASD/클릭/드래그로 이동 · 대형 광물은 2초 정도 공격하면 약점이 드러납니다 · 광석은 BASE에서 비우세요</div>
 <canvas id="c"></canvas>
 <script>
 const c = document.getElementById('c');
@@ -80,13 +80,36 @@ function drawPoly(x,y,r,sides,a0,fill){
 }
 
 function mineralNumber(hp){
-  return Math.max(1, Math.ceil(hp/10)) + 'A';
+  return Math.max(0, hp/10).toFixed(2) + 'A';
+}
+
+function mineralGap(a,b){
+  return a.r+b.r+(a.type==='large'||b.type==='large'?42:30);
+}
+
+function findSpawnSpot(r,type,top,bottom){
+  for(let tries=0;tries<260;tries++){
+    const x=r+36+Math.random()*(W-(r+36)*2);
+    const usableH=Math.max(30,bottom-top-r*2);
+    const y=top+r+Math.random()*usableH;
+    const probe={x,y,r,type};
+    const clearMinerals=!minerals.some(m=>Math.hypot(m.x-x,m.y-y)<mineralGap(probe,m));
+    const clearBase=Math.hypot(x-base.x,y-base.y)>r+base.r+105;
+    const clearPlayer=Math.hypot(x-plr.x,y-plr.y)>r+plr.pOrbit+plr.pLen+72;
+    if(clearMinerals&&clearBase&&clearPlayer) return {x,y};
+  }
+  return null;
+}
+
+function isBlockedByMineral(x,y){
+  return minerals.some(m=>!m.mined&&Math.hypot(x-m.x,y-m.y)<plr.r+m.r+5);
 }
 
 /* ───── Mineral ───── */
 class Mineral {
   constructor(o){
     this.type  = o.type||'normal';
+    this.tier  = o.tier||this.type;
     this.x=o.x; this.y=o.y;
     this.r     = o.r||20;
     this.sides = o.sides||6;
@@ -102,6 +125,9 @@ class Mineral {
       this.wAng   = Math.random()*6.28;
       this.wPulse = 0;
       this.wMoveTick = 0;
+      this.wReveal = 0;
+      this.wHitTick = 0;
+      this.breakTime = 0;
       this.cLines = Array.from({length:9},()=>({a:Math.random()*6.28,len:.2+Math.random()*.65}));
     }
   }
@@ -110,17 +136,22 @@ class Mineral {
 
   hit(isWeak){
     if(this.type==='large'){
-      if(isWeak){
+      this.wHitTick=120;
+      const weakVisible=this.wReveal>=120||this.breakTime>0;
+      if(isWeak&&weakVisible){
         const old=this.crack;
-        this.crack=Math.min(100,this.crack+3.5);
-        const dmg=this.crack>=100?this.spd*8:this.spd*3.4;
+        this.crack=Math.min(100,this.crack+7);
+        if(this.crack>=100&&old<100){
+          this.breakTime=300;
+          shake(10);spawnPts(this.x,this.y,'#ff0',25);
+        }
+        const dmg=this.breakTime>0?this.spd*8:this.spd*3.4;
         this.hp-=dmg;
         spawnPts(this.wx,this.wy,'#f80',4);
-        if(this.crack>=100&&old<100){shake(10);spawnPts(this.x,this.y,'#ff0',25);}
       } else {
-        const dmg=this.crack>=100?this.spd*5:this.spd*.75;
+        const dmg=this.breakTime>0?this.spd*5:this.spd*.75;
         this.hp-=dmg;
-        if(this.crack>=100) spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,'#ff8',2);
+        if(this.breakTime>0) spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,'#ff8',2);
         else spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,this.col,1);
       }
     } else {
@@ -139,8 +170,25 @@ class Mineral {
     this.ang+=this.spin;
     if(this.type==='large'){
       this.wPulse+=.05;
-      this.wMoveTick++;
-      if(this.wMoveTick>210){
+      if(this.breakTime>0){
+        this.breakTime--;
+        if(this.breakTime<=0){
+          this.breakTime=0;
+          this.crack=0;
+          this.wReveal=0;
+          this.wMoveTick=0;
+          this.wAng=Math.random()*6.28;
+          spawnPts(this.x,this.y,'#aaa',12);
+        }
+      }
+      if(this.wHitTick>0){
+        this.wHitTick--;
+        this.wReveal=Math.min(120,this.wReveal+1);
+      } else {
+        this.wReveal=Math.max(0,this.wReveal-2);
+      }
+      if(this.wReveal>=120||this.breakTime>0) this.wMoveTick++;
+      if((this.wReveal>=120||this.breakTime>0)&&this.wMoveTick>210){
         this.wMoveTick=0;
         this.wAng=Math.random()*6.28;
         spawnPts(this.wx,this.wy,'#f44',10);
@@ -154,7 +202,7 @@ class Mineral {
 
     if(this.type==='large'){
       /* body */
-      if(this.crack>=100){
+      if(this.breakTime>0){
         ctx.save();ctx.shadowColor='#ff8';ctx.shadowBlur=22;
         drawPoly(this.x,this.y,this.r,this.sides,this.ang,this.col);
         ctx.restore();
@@ -184,20 +232,26 @@ class Mineral {
       }
 
       /* weak point */
-      const wp=7+Math.sin(this.wPulse*3)*3;
-      const wc=this.crack>=100?'#fff':'#f22';
-      ctx.save();
-      ctx.globalAlpha=.35+Math.sin(this.wPulse*3)*.3;
-      ctx.beginPath();ctx.arc(this.wx,this.wy,wp+7,0,6.28);
-      ctx.strokeStyle=wc;ctx.lineWidth=2;ctx.stroke();
-      ctx.restore();
-      ctx.beginPath();ctx.arc(this.wx,this.wy,wp,0,6.28);
-      ctx.fillStyle=wc;ctx.fill();
-      ctx.strokeStyle='#fff';ctx.lineWidth=2;
-      ctx.beginPath();
-      ctx.moveTo(this.wx-5,this.wy-5);ctx.lineTo(this.wx+5,this.wy+5);
-      ctx.moveTo(this.wx+5,this.wy-5);ctx.lineTo(this.wx-5,this.wy+5);
-      ctx.stroke();
+      const reveal=Math.min(1,this.wReveal/120);
+      if(reveal>0&&this.breakTime<=0){
+        const wp=7+Math.sin(this.wPulse*3)*3;
+        const wc=this.breakTime>0?'#fff':'#f22';
+        ctx.save();
+        ctx.globalAlpha=(.35+Math.sin(this.wPulse*3)*.3)*reveal;
+        ctx.beginPath();ctx.arc(this.wx,this.wy,wp+7,0,6.28);
+        ctx.strokeStyle=wc;ctx.lineWidth=2;ctx.stroke();
+        ctx.restore();
+        ctx.save();
+        ctx.globalAlpha=reveal;
+        ctx.beginPath();ctx.arc(this.wx,this.wy,wp,0,6.28);
+        ctx.fillStyle=wc;ctx.fill();
+        ctx.strokeStyle='#fff';ctx.lineWidth=2;
+        ctx.beginPath();
+        ctx.moveTo(this.wx-5,this.wy-5);ctx.lineTo(this.wx+5,this.wy+5);
+        ctx.moveTo(this.wx+5,this.wy-5);ctx.lineTo(this.wx-5,this.wy+5);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       ctx.save();
       ctx.fillStyle='#fff';ctx.font='bold 17px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
@@ -210,19 +264,21 @@ class Mineral {
       const gW=this.r*2+12,gH=9;
       const gx=this.x-gW/2, gy=this.y+this.r+11;
       ctx.fillStyle='#111';ctx.fillRect(gx,gy,gW,gH);
-      ctx.fillStyle=this.crack>=100?'#ff0':'#f84';
-      ctx.fillRect(gx,gy,gW*this.crack/100,gH);
+      if(this.breakTime>0){
+        const bt=this.breakTime/300;
+        const bg=ctx.createLinearGradient(gx,0,gx+gW,0);
+        bg.addColorStop(0,'#fff56a');
+        bg.addColorStop(1,'#ff8a00');
+        ctx.fillStyle=bg;
+        ctx.fillRect(gx,gy,gW*bt,gH);
+      } else {
+        ctx.fillStyle='#f84';
+        ctx.fillRect(gx,gy,gW*this.crack/100,gH);
+      }
       ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.strokeRect(gx,gy,gW,gH);
-      ctx.fillStyle=this.crack>=100?'#ff0':'#fa8';
+      ctx.fillStyle=this.breakTime>0?'#ff0':'#fa8';
       ctx.font='bold 9px Arial';ctx.textAlign='center';
-      ctx.fillText(this.crack>=100?'⚡ BREAK!':'균열 '+Math.floor(this.crack)+'%',this.x,gy+gH+10);
-
-      /* HP bar */
-      const hy=this.y-this.r-13;
-      ctx.fillStyle='#111';ctx.fillRect(gx,hy,gW,6);
-      ctx.fillStyle=hr>.5?'#4d4':hr>.25?'#da0':'#d44';
-      ctx.fillRect(gx,hy,gW*hr,6);
-      ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.strokeRect(gx,hy,gW,6);
+      ctx.fillText(this.breakTime>0?'⚡ BREAK '+Math.ceil(this.breakTime/60)+'s':'균열 '+Math.floor(this.crack)+'%',this.x,gy+gH+10);
 
     } else {
       /* normal mineral */
@@ -231,10 +287,6 @@ class Mineral {
         ctx.save();ctx.globalAlpha=(1-hr)*.5;
         drawPoly(this.x,this.y,this.r,this.sides,this.ang,'#000');
         ctx.restore();
-        const bW=this.r*2,bx=this.x-bW/2,by=this.y+this.r+5;
-        ctx.fillStyle='#111';ctx.fillRect(bx,by,bW,4);
-        ctx.fillStyle=hr>.5?'#4d4':'#d44';
-        ctx.fillRect(bx,by,bW*hr,4);
       }
       ctx.save();
       ctx.fillStyle='#fff';ctx.font='bold 13px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
@@ -254,9 +306,24 @@ const plr={
   pAng:0, pSpd:.09, pOrbit:33, pLen:14, pickCount:6,
 
   update(){
-    const dx=this.tx-this.x,dy=this.ty-this.y,d=Math.hypot(dx,dy);
-    if(d>1.5){this.x+=dx/d*Math.min(d,this.spd);this.y+=dy/d*Math.min(d,this.spd);}
+    let kx=(keys.d?1:0)-(keys.a?1:0);
+    let ky=(keys.s?1:0)-(keys.w?1:0);
+    const kd=Math.hypot(kx,ky);
+    if(kd>0){
+      this.moveBy(kx/kd*this.spd,ky/kd*this.spd);
+      this.tx=this.x;this.ty=this.y;
+    } else {
+      const dx=this.tx-this.x,dy=this.ty-this.y,d=Math.hypot(dx,dy);
+      if(d>1.5) this.moveBy(dx/d*Math.min(d,this.spd),dy/d*Math.min(d,this.spd));
+    }
     this.pAng+=this.pSpd;
+  },
+
+  moveBy(dx,dy){
+    const nx=Math.max(this.r,Math.min(W-this.r,this.x+dx));
+    if(!isBlockedByMineral(nx,this.y)) this.x=nx;
+    const ny=Math.max(this.r,Math.min(H-this.r,this.y+dy));
+    if(!isBlockedByMineral(this.x,ny)) this.y=ny;
   },
 
   tips(){
@@ -357,43 +424,71 @@ function spawnMinerals(){
   minerals=[];
   const nCols=['#5f8','#f65','#57f','#ff5','#f5f','#5ff','#fa5','#5af'];
   const nSides=[3,4,5,6,7,8];
-  const nCount=7+chapter*2;
+  const smallCount=4+Math.floor(chapter*.8);
+  const midCount=3+Math.floor(chapter*.55);
+  const normalScale=1.2+Math.min(.25,chapter*.015);
+  const largeScale=1.2+Math.min(.75,(chapter-1)*.08);
 
-  for(let i=0;i<nCount;i++){
-    let x,y,tries=0;
-    do{
-      x=60+Math.random()*(W-120);
-      y=50+Math.random()*(H-210);
-      tries++;
-    }while(tries<30&&(minerals.some(m=>Math.hypot(m.x-x,m.y-y)<68)||Math.hypot(x-base.x,y-base.y)<85));
+  for(let i=0;i<smallCount;i++){
+    const r=(13+Math.random()*5)*normalScale;
+    const pos=findSpawnSpot(r,'normal',50,H-170);
+    if(!pos) continue;
     minerals.push(new Mineral({
-      x,y,type:'normal',
-      r:(15+Math.random()*10)*1.2,
+      x:pos.x,y:pos.y,type:'normal',tier:'small',
+      r,
       sides:nSides[Math.floor(Math.random()*nSides.length)],
       col:nCols[Math.floor(Math.random()*nCols.length)],
-      hp:60+Math.random()*50,
+      hp:45+Math.random()*25+chapter*3,
       spd:.4+Math.random()*.4,
-      val:8+Math.floor(Math.random()*5),
+      val:6+Math.floor(Math.random()*4),
     }));
   }
 
-  const lCount=2+Math.floor((chapter-1)/2);
-  const lCols=['#f84','#84f','#4f8','#f44','#48f','#fa0'];
-  for(let i=0;i<lCount;i++){
-    let x,y,tries=0;
-    do{
-      x=100+Math.random()*(W-200);
-      y=65+Math.random()*(H-260);
-      tries++;
-    }while(tries<40&&(minerals.some(m=>Math.hypot(m.x-x,m.y-y)<115)||Math.hypot(x-base.x,y-base.y)<115));
+  for(let i=0;i<midCount;i++){
+    const r=(25+Math.random()*8)*normalScale;
+    const pos=findSpawnSpot(r,'normal',50,H-185);
+    if(!pos) continue;
     minerals.push(new Mineral({
-      x,y,type:'large',
-      r:(42+Math.random()*10)*1.2,
+      x:pos.x,y:pos.y,type:'normal',tier:'mid',
+      r,
+      sides:5+Math.floor(Math.random()*3),
+      col:nCols[Math.floor(Math.random()*nCols.length)],
+      hp:105+Math.random()*50+chapter*8,
+      spd:.34+Math.random()*.28,
+      val:14+Math.floor(Math.random()*7),
+    }));
+  }
+
+  const lCount=1+Math.floor(chapter/2);
+  const lCols=['#f84','#84f','#4f8','#f44','#48f','#fa0'];
+  const largeHpBase=240+chapter*28+Math.floor((largeScale-1)*180);
+  for(let i=0;i<lCount;i++){
+    const r=(42+Math.random()*10+i*2)*largeScale;
+    const pos=findSpawnSpot(r,'large',62,H-215);
+    if(!pos) continue;
+    minerals.push(new Mineral({
+      x:pos.x,y:pos.y,type:'large',tier:'large',
+      r,
       sides:6,
       col:lCols[i%lCols.length],
-      hp:240+chapter*20,
+      hp:largeHpBase*2,
       spd:.2,
-      val:35,
+      val:35+chapter*3,
+    }));
+  }
+
+  const giantScale=largeScale+0.45+Math.min(.45,chapter*.04);
+  const giantR=(58+Math.random()*12)*giantScale;
+  const giantPos=findSpawnSpot(giantR,'large',66,H-230);
+  if(giantPos){
+    minerals.push(new Mineral({
+      x:giantPos.x,y:giantPos.y,type:'large',tier:'giant',
+      r:giantR,
+      sides:8,
+      col:'#8a4fff',
+      hp:largeHpBase*3,
+      spd:.2,
+      val:55+chapter*5,
     }));
   }
 }
@@ -419,7 +514,8 @@ function checkMining(){
 
       if(m.type==='large'){
         const wd=Math.hypot(t.x-m.wx,t.y-m.wy);
-        if(wd<17){
+        const weakVisible=m.wReveal>=120||m.breakTime>0;
+        if(weakVisible&&wd<17){
           if(m.hit(true)) collectOre(m.val);
           break;
         }
@@ -517,6 +613,21 @@ function drawHUD(){
 }
 
 /* ───── Input ───── */
+const keys={w:false,a:false,s:false,d:false};
+window.addEventListener('keydown',e=>{
+  const k=e.key.toLowerCase();
+  if(k in keys){
+    keys[k]=true;
+    e.preventDefault();
+  }
+});
+window.addEventListener('keyup',e=>{
+  const k=e.key.toLowerCase();
+  if(k in keys){
+    keys[k]=false;
+    e.preventDefault();
+  }
+});
 c.addEventListener('mousedown',e=>{
   if(state==='cleared'){nextChapter();return;}
   const r=c.getBoundingClientRect();
