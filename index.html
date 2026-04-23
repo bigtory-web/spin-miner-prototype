@@ -26,7 +26,7 @@ canvas { cursor:crosshair; display:block; }
 </head>
 <body>
 <div id="hdr">⛏ SPIN MINER</div>
-<div id="hint">WASD/클릭/드래그로 이동 · 대형 광물은 2초 정도 공격하면 약점이 드러납니다 · 광석은 BASE에서 비우세요</div>
+<div id="hint">WASD/클릭/드래그로 이동 · 떨어진 광석을 주워 카고를 채우세요 · 광석은 BASE에서 비우세요</div>
 <canvas id="c"></canvas>
 <script>
 const c = document.getElementById('c');
@@ -36,6 +36,7 @@ const H = c.height = 590;
 
 /* ───── Particles ───── */
 const pts = [];
+const ores = [];
 function spawnPts(x, y, col, n) {
   n = n||5;
   for (let i=0;i<n;i++){
@@ -56,6 +57,82 @@ function drawPts(){
     ctx.fillStyle=p.col;ctx.fill();
   }
   ctx.globalAlpha=1;
+}
+
+function spawnOre(x,y,val,col,tier){
+  const chunkCaps={small:6,mid:10,large:18,giant:28};
+  const chunkBase={small:4,mid:7,large:14,giant:22};
+  const cap=chunkCaps[tier]||10;
+  const base=chunkBase[tier]||6;
+  const chunks=Math.max(3,Math.min(cap,base+Math.ceil(val/10)));
+  let left=val;
+  for(let i=0;i<chunks;i++){
+    const amount=i===chunks-1?left:Math.max(1,Math.floor(val/chunks));
+    left-=amount;
+    const a=Math.random()*6.28;
+    const dist=18+Math.random()*34;
+    ores.push({
+      x:x+Math.cos(a)*dist,
+      y:y+Math.sin(a)*dist,
+      vx:Math.cos(a)*(1.4+Math.random()*2.1),
+      vy:Math.sin(a)*(1.4+Math.random()*2.1),
+      val:amount,
+      col:col||'#7bdcff',
+      r:4+Math.random()*3,
+      t:0,
+    });
+  }
+}
+
+function collectOre(val){
+  const free=CARRY_MAX-playerCargo;
+  if(free<=0) return 0;
+  const gained=Math.min(free,val);
+  playerCargo+=gained;
+  score+=gained;
+  return gained;
+}
+
+function tickOres(){
+  for(let i=ores.length-1;i>=0;i--){
+    const o=ores[i];
+    o.t++;
+    o.x+=o.vx;o.y+=o.vy;
+    o.vx*=.9;o.vy*=.9;
+    o.x=Math.max(o.r,Math.min(W-o.r,o.x));
+    o.y=Math.max(o.r,Math.min(H-o.r,o.y));
+
+    const dx=plr.x-o.x,dy=plr.y-o.y,d=Math.hypot(dx,dy);
+    if(playerCargo<CARRY_MAX&&d>0.001&&d<ORE_MAGNET_RADIUS){
+      const s=ORE_MAGNET_SPEED*(1-d/ORE_MAGNET_RADIUS+.25);
+      o.x+=dx/d*s;
+      o.y+=dy/d*s;
+    }
+    if(playerCargo<CARRY_MAX&&d<ORE_PICKUP_RADIUS){
+      const gained=collectOre(o.val);
+      if(gained>=o.val){
+        spawnPts(plr.x,plr.y,o.col,3);
+        ores.splice(i,1);
+      } else if(gained>0){
+        o.val-=gained;
+      }
+    }
+  }
+}
+
+function drawOres(){
+  for(const o of ores){
+    ctx.save();
+    ctx.shadowColor=o.col;ctx.shadowBlur=8;
+    ctx.translate(o.x,o.y);
+    ctx.rotate(o.t*.04);
+    ctx.fillStyle=o.col;
+    ctx.fillRect(-o.r,-o.r,o.r*2,o.r*2);
+    ctx.strokeStyle='rgba(255,255,255,.45)';
+    ctx.lineWidth=1;
+    ctx.strokeRect(-o.r,-o.r,o.r*2,o.r*2);
+    ctx.restore();
+  }
 }
 
 /* ───── Screen Shake ───── */
@@ -79,6 +156,19 @@ function drawPoly(x,y,r,sides,a0,fill){
   ctx.strokeStyle='rgba(255,255,255,0.22)';ctx.lineWidth=2;ctx.stroke();
 }
 
+function strokePoly(x,y,r,sides,a0,stroke,width){
+  ctx.beginPath();
+  for(let i=0;i<sides;i++){
+    const a=a0+i/sides*6.28;
+    i?ctx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r)
+     :ctx.moveTo(x+Math.cos(a)*r,y+Math.sin(a)*r);
+  }
+  ctx.closePath();
+  ctx.strokeStyle=stroke;
+  ctx.lineWidth=width;
+  ctx.stroke();
+}
+
 function mineralNumber(hp){
   return Math.max(0, hp/10).toFixed(2) + 'A';
 }
@@ -86,6 +176,18 @@ function mineralNumber(hp){
 function mineralGap(a,b){
   return a.r+b.r+(a.type==='large'||b.type==='large'?42:30);
 }
+
+const WEAK_APPEAR_FRAMES = 120;
+const WEAK_BREAK_GAIN = 1.25;
+const WEAK_MOVE_FRAMES = 390;
+const BREAK_TIME_FRAMES = 300;
+const PICKAXE_DAMAGE = 9.2;
+const BREAK_DAMAGE_MULTIPLIER = 1.8;
+const WEAK_OFFSET_MIN = .42;
+const WEAK_OFFSET_MAX = .78;
+const ORE_PICKUP_RADIUS = 28;
+const ORE_MAGNET_RADIUS = 86;
+const ORE_MAGNET_SPEED = 4.2;
 
 function findSpawnSpot(r,type,top,bottom){
   for(let tries=0;tries<260;tries++){
@@ -99,6 +201,67 @@ function findSpawnSpot(r,type,top,bottom){
     if(clearMinerals&&clearBase&&clearPlayer) return {x,y};
   }
   return null;
+}
+
+function fallbackSpawnSpot(r,slot,total,top,bottom){
+  const cols=Math.max(1,Math.ceil(Math.sqrt(total+2)));
+  const col=slot%cols;
+  const row=Math.floor(slot/cols);
+  const rows=Math.max(1,Math.ceil(total/cols));
+  const x=r+38+(W-(r+38)*2)*((col+.5)/cols);
+  const y=top+r+(Math.max(30,bottom-top-r*2))*((row+.5)/rows);
+  return {
+    x:Math.max(r+30,Math.min(W-r-30,x)),
+    y:Math.max(top+r,Math.min(bottom-r,y)),
+  };
+}
+
+function clampMineral(m){
+  m.x=Math.max(m.r+24,Math.min(W-m.r-24,m.x));
+  m.y=Math.max(m.r+44,Math.min(H-170-m.r,m.y));
+}
+
+function relaxMineralLayout(){
+  for(let step=0;step<90;step++){
+    let moved=false;
+    for(let i=0;i<minerals.length;i++){
+      const a=minerals[i];
+      if(a.mined) continue;
+      for(let j=i+1;j<minerals.length;j++){
+        const b=minerals[j];
+        if(b.mined) continue;
+        let dx=b.x-a.x, dy=b.y-a.y;
+        let d=Math.hypot(dx,dy);
+        const gap=mineralGap(a,b);
+        if(d<=0.001){
+          const angle=(i*2.399+j)*6.28;
+          dx=Math.cos(angle);
+          dy=Math.sin(angle);
+          d=1;
+        }
+        if(d<gap){
+          const push=(gap-d)*.52;
+          const nx=dx/d, ny=dy/d;
+          a.x-=nx*push; a.y-=ny*push;
+          b.x+=nx*push; b.y+=ny*push;
+          clampMineral(a); clampMineral(b);
+          moved=true;
+        }
+      }
+
+      const bd=Math.hypot(a.x-base.x,a.y-base.y);
+      const baseGap=a.r+base.r+112;
+      if(bd<baseGap){
+        const nx=(a.x-base.x)/(bd||1);
+        const ny=(a.y-base.y)/(bd||1);
+        a.x+=nx*(baseGap-bd);
+        a.y+=ny*(baseGap-bd);
+        clampMineral(a);
+        moved=true;
+      }
+    }
+    if(!moved) break;
+  }
 }
 
 function isBlockedByMineral(x,y){
@@ -115,48 +278,61 @@ class Mineral {
     this.sides = o.sides||6;
     this.col   = o.col||'#7f7';
     this.hp    = o.hp||100; this.maxHp=this.hp;
-    this.spd   = o.spd||.5;
     this.val   = o.val||10;
     this.mined = false;
     this.ang   = Math.random()*6.28;
     this.spin  = (Math.random()-.5)*.007;
+    this.hitImpact = 0;
     if(this.type==='large'){
       this.crack  = 0;
       this.wAng   = Math.random()*6.28;
       this.wPulse = 0;
+      this.wHitPulse = 0;
       this.wMoveTick = 0;
       this.wReveal = 0;
-      this.wHitTick = 0;
+      this.wWasVisible = false;
       this.breakTime = 0;
       this.cLines = Array.from({length:9},()=>({a:Math.random()*6.28,len:.2+Math.random()*.65}));
     }
   }
-  get wx(){ return this.x+Math.cos(this.wAng)*this.r*.55; }
-  get wy(){ return this.y+Math.sin(this.wAng)*this.r*.55; }
+  get wx(){ return this.x+Math.cos(this.wAng)*this.r*.86; }
+  get wy(){ return this.y+Math.sin(this.wAng)*this.r*.86; }
 
-  hit(isWeak){
+  hit(isWeak, hitX, hitY){
+    if(this.hitImpact<=0) this.hitImpact=10;
     if(this.type==='large'){
-      this.wHitTick=120;
-      const weakVisible=this.wReveal>=120||this.breakTime>0;
+      const wasHidden=this.wReveal<=0;
+      const weakVisible=this.wReveal>=WEAK_APPEAR_FRAMES&&this.breakTime<=0;
       if(isWeak&&weakVisible){
+        this.wHitPulse=Math.min(1,this.wHitPulse+.75);
         const old=this.crack;
-        this.crack=Math.min(100,this.crack+7);
+        this.crack=Math.min(100,this.crack+WEAK_BREAK_GAIN);
         if(this.crack>=100&&old<100){
-          this.breakTime=300;
+          this.breakTime=BREAK_TIME_FRAMES;
+          this.wReveal=0;
+          this.wWasVisible=false;
           shake(10);spawnPts(this.x,this.y,'#ff0',25);
         }
-        const dmg=this.breakTime>0?this.spd*8:this.spd*3.4;
-        this.hp-=dmg;
+        this.hp-=PICKAXE_DAMAGE;
         spawnPts(this.wx,this.wy,'#f80',4);
       } else {
-        const dmg=this.breakTime>0?this.spd*5:this.spd*.75;
+        const dmg=this.breakTime>0?PICKAXE_DAMAGE*BREAK_DAMAGE_MULTIPLIER:PICKAXE_DAMAGE;
         this.hp-=dmg;
-        if(this.breakTime>0) spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,'#ff8',2);
-        else spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,this.col,1);
+        if(this.breakTime<=0&&wasHidden&&hitX!==undefined&&hitY!==undefined){
+          const side=Math.random()<.5?-1:1;
+          const off=WEAK_OFFSET_MIN+Math.random()*(WEAK_OFFSET_MAX-WEAK_OFFSET_MIN);
+          this.wAng=Math.atan2(hitY-this.y,hitX-this.x)+side*off;
+          this.wMoveTick=0;
+        }
+        if(this.breakTime<=0&&!weakVisible){
+          this.wReveal=Math.min(WEAK_APPEAR_FRAMES,this.wReveal+1);
+        }
+        if(this.breakTime>0) spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,'#ff8',5);
+        else spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,'#ffe66d',2);
       }
     } else {
-      this.hp-=this.spd;
-      spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,this.col,2);
+      this.hp-=PICKAXE_DAMAGE;
+      spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,'#ffe66d',3);
     }
     if(this.hp<=0){
       this.hp=0; this.mined=true;
@@ -168,27 +344,30 @@ class Mineral {
 
   update(){
     this.ang+=this.spin;
+    if(this.hitImpact>0) this.hitImpact--;
     if(this.type==='large'){
       this.wPulse+=.05;
+      this.wHitPulse*=.68;
       if(this.breakTime>0){
         this.breakTime--;
         if(this.breakTime<=0){
           this.breakTime=0;
           this.crack=0;
           this.wReveal=0;
+          this.wWasVisible=false;
           this.wMoveTick=0;
           this.wAng=Math.random()*6.28;
           spawnPts(this.x,this.y,'#aaa',12);
         }
       }
-      if(this.wHitTick>0){
-        this.wHitTick--;
-        this.wReveal=Math.min(120,this.wReveal+1);
-      } else {
-        this.wReveal=Math.max(0,this.wReveal-2);
+      const wasVisible=this.wWasVisible;
+      this.wWasVisible=this.wReveal>=WEAK_APPEAR_FRAMES&&this.breakTime<=0;
+      if(this.wWasVisible&&!wasVisible){
+        shake(3);
+        spawnPts(this.wx,this.wy,'#f44',18);
       }
-      if(this.wReveal>=120||this.breakTime>0) this.wMoveTick++;
-      if((this.wReveal>=120||this.breakTime>0)&&this.wMoveTick>210){
+      if(this.wReveal>=WEAK_APPEAR_FRAMES||this.breakTime>0) this.wMoveTick++;
+      if(this.wReveal>=WEAK_APPEAR_FRAMES&&this.breakTime<=0&&this.wMoveTick>WEAK_MOVE_FRAMES){
         this.wMoveTick=0;
         this.wAng=Math.random()*6.28;
         spawnPts(this.wx,this.wy,'#f44',10);
@@ -199,15 +378,18 @@ class Mineral {
   draw(){
     if(this.mined) return;
     const hr=this.hp/this.maxHp;
+    const hitT=this.hitImpact>0?this.hitImpact/10:0;
+    const pulseScale=1-Math.sin(hitT*3.14)*.04;
+    const rr=this.r*pulseScale;
 
     if(this.type==='large'){
       /* body */
       if(this.breakTime>0){
         ctx.save();ctx.shadowColor='#ff8';ctx.shadowBlur=22;
-        drawPoly(this.x,this.y,this.r,this.sides,this.ang,this.col);
+        drawPoly(this.x,this.y,rr,this.sides,this.ang,this.col);
         ctx.restore();
       } else {
-        drawPoly(this.x,this.y,this.r,this.sides,this.ang,this.col);
+        drawPoly(this.x,this.y,rr,this.sides,this.ang,this.col);
       }
 
       /* crack lines */
@@ -218,7 +400,7 @@ class Mineral {
         for(const cl of this.cLines){
           ctx.beginPath();
           ctx.moveTo(this.x,this.y);
-          ctx.lineTo(this.x+Math.cos(cl.a)*this.r*cl.len,this.y+Math.sin(cl.a)*this.r*cl.len);
+          ctx.lineTo(this.x+Math.cos(cl.a)*rr*cl.len,this.y+Math.sin(cl.a)*rr*cl.len);
           ctx.stroke();
         }
         ctx.restore();
@@ -227,65 +409,52 @@ class Mineral {
       /* damage overlay */
       if(hr<1){
         ctx.save();ctx.globalAlpha=(1-hr)*.55;
-        drawPoly(this.x,this.y,this.r,this.sides,this.ang,'#000');
+        drawPoly(this.x,this.y,rr,this.sides,this.ang,'#000');
         ctx.restore();
       }
 
       /* weak point */
-      const reveal=Math.min(1,this.wReveal/120);
-      if(reveal>0&&this.breakTime<=0){
-        const wp=7+Math.sin(this.wPulse*3)*3;
-        const wc=this.breakTime>0?'#fff':'#f22';
+      if(this.wReveal>=WEAK_APPEAR_FRAMES&&this.breakTime<=0){
+        const grow=this.crack/100;
+        const hitPop=this.wHitPulse;
+        const wp=8+grow*15+hitPop*7+Math.sin(this.wPulse*3)*(2+grow*2);
+        const wc=this.crack>=75?'#ff4':'#f22';
         ctx.save();
-        ctx.globalAlpha=(.35+Math.sin(this.wPulse*3)*.3)*reveal;
-        ctx.beginPath();ctx.arc(this.wx,this.wy,wp+7,0,6.28);
-        ctx.strokeStyle=wc;ctx.lineWidth=2;ctx.stroke();
-        ctx.restore();
-        ctx.save();
-        ctx.globalAlpha=reveal;
         ctx.beginPath();ctx.arc(this.wx,this.wy,wp,0,6.28);
         ctx.fillStyle=wc;ctx.fill();
-        ctx.strokeStyle='#fff';ctx.lineWidth=2;
+        ctx.strokeStyle='rgba(70,20,20,.72)';ctx.lineWidth=2;
         ctx.beginPath();
-        ctx.moveTo(this.wx-5,this.wy-5);ctx.lineTo(this.wx+5,this.wy+5);
-        ctx.moveTo(this.wx+5,this.wy-5);ctx.lineTo(this.wx-5,this.wy+5);
+        const cross=5;
+        ctx.moveTo(this.wx-cross,this.wy-cross);ctx.lineTo(this.wx+cross,this.wy+cross);
+        ctx.moveTo(this.wx+cross,this.wy-cross);ctx.lineTo(this.wx-cross,this.wy+cross);
         ctx.stroke();
         ctx.restore();
       }
 
       ctx.save();
-      ctx.fillStyle='#fff';ctx.font='bold 17px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#fff';ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.lineWidth=4;ctx.strokeStyle='rgba(0,0,0,.75)';
       ctx.strokeText(mineralNumber(this.hp),this.x,this.y);
       ctx.fillText(mineralNumber(this.hp),this.x,this.y);
       ctx.restore();
 
-      /* crack gauge */
-      const gW=this.r*2+12,gH=9;
-      const gx=this.x-gW/2, gy=this.y+this.r+11;
-      ctx.fillStyle='#111';ctx.fillRect(gx,gy,gW,gH);
       if(this.breakTime>0){
-        const bt=this.breakTime/300;
-        const bg=ctx.createLinearGradient(gx,0,gx+gW,0);
-        bg.addColorStop(0,'#fff56a');
-        bg.addColorStop(1,'#ff8a00');
-        ctx.fillStyle=bg;
-        ctx.fillRect(gx,gy,gW*bt,gH);
-      } else {
-        ctx.fillStyle='#f84';
-        ctx.fillRect(gx,gy,gW*this.crack/100,gH);
+        const bt=this.breakTime/BREAK_TIME_FRAMES;
+        const spread=bt*30;
+        ctx.save();
+        ctx.globalAlpha=.38+bt*.42;
+        ctx.shadowColor='#ffec66';
+        ctx.shadowBlur=18+bt*18;
+        strokePoly(this.x,this.y,this.r+spread,this.sides,this.ang,'#ffec66',2+bt*1.5);
+        ctx.restore();
       }
-      ctx.strokeStyle='#555';ctx.lineWidth=1;ctx.strokeRect(gx,gy,gW,gH);
-      ctx.fillStyle=this.breakTime>0?'#ff0':'#fa8';
-      ctx.font='bold 9px Arial';ctx.textAlign='center';
-      ctx.fillText(this.breakTime>0?'⚡ BREAK '+Math.ceil(this.breakTime/60)+'s':'균열 '+Math.floor(this.crack)+'%',this.x,gy+gH+10);
 
     } else {
       /* normal mineral */
-      drawPoly(this.x,this.y,this.r,this.sides,this.ang,this.col);
+      drawPoly(this.x,this.y,rr,this.sides,this.ang,this.col);
       if(hr<1){
         ctx.save();ctx.globalAlpha=(1-hr)*.5;
-        drawPoly(this.x,this.y,this.r,this.sides,this.ang,'#000');
+        drawPoly(this.x,this.y,rr,this.sides,this.ang,'#000');
         ctx.restore();
       }
       ctx.save();
@@ -396,6 +565,19 @@ const plr={
       ctx.fillStyle=i%2?'#7bdcff':'#f6b04a';
       ctx.fill();ctx.strokeStyle='rgba(0,0,0,.45)';ctx.lineWidth=1;ctx.stroke();
     }
+
+    const cw=138,ch=21,cx=this.x-cw/2,cy=this.y+34;
+    ctx.fillStyle='rgba(0,0,0,.72)';
+    ctx.fillRect(cx,cy,cw,ch);
+    ctx.fillStyle='#45df55';
+    ctx.fillRect(cx,cy,cw*(playerCargo/CARRY_MAX),ch);
+    ctx.strokeStyle='rgba(255,255,255,.32)';
+    ctx.lineWidth=1;
+    ctx.strokeRect(cx,cy,cw,ch);
+    ctx.fillStyle='#fff';
+    ctx.font='bold 13px Arial';
+    ctx.textAlign='center';
+    ctx.fillText('CARGO '+Math.floor(playerCargo)+'/'+CARRY_MAX,this.x,cy+15);
   }
 };
 
@@ -418,7 +600,7 @@ let minerals=[];
 let state='playing'; // playing | cleared
 let chapter=1, deliveredCargo=0, playerCargo=0, score=0;
 const CARGO_MAX=100;
-const CARRY_MAX=40;
+const CARRY_MAX=100;
 
 function spawnMinerals(){
   minerals=[];
@@ -438,23 +620,20 @@ function spawnMinerals(){
       r,
       sides:nSides[Math.floor(Math.random()*nSides.length)],
       col:nCols[Math.floor(Math.random()*nCols.length)],
-      hp:45+Math.random()*25+chapter*3,
-      spd:.4+Math.random()*.4,
+      hp:(45+Math.random()*25+chapter*3)*20,
       val:6+Math.floor(Math.random()*4),
     }));
   }
 
   for(let i=0;i<midCount;i++){
     const r=(25+Math.random()*8)*normalScale;
-    const pos=findSpawnSpot(r,'normal',50,H-185);
-    if(!pos) continue;
+    const pos=findSpawnSpot(r,'normal',50,H-185)||fallbackSpawnSpot(r,i,midCount,50,H-185);
     minerals.push(new Mineral({
       x:pos.x,y:pos.y,type:'normal',tier:'mid',
       r,
       sides:5+Math.floor(Math.random()*3),
       col:nCols[Math.floor(Math.random()*nCols.length)],
-      hp:105+Math.random()*50+chapter*8,
-      spd:.34+Math.random()*.28,
+      hp:(105+Math.random()*50+chapter*8)*20,
       val:14+Math.floor(Math.random()*7),
     }));
   }
@@ -464,47 +643,38 @@ function spawnMinerals(){
   const largeHpBase=240+chapter*28+Math.floor((largeScale-1)*180);
   for(let i=0;i<lCount;i++){
     const r=(42+Math.random()*10+i*2)*largeScale;
-    const pos=findSpawnSpot(r,'large',62,H-215);
-    if(!pos) continue;
+    const mainPos={x:W*.3+(Math.random()-.5)*60,y:H*.33+(Math.random()-.5)*70};
+    const pos=i===0?mainPos:(findSpawnSpot(r,'large',62,H-215)||fallbackSpawnSpot(r,i,lCount,62,H-215));
     minerals.push(new Mineral({
       x:pos.x,y:pos.y,type:'large',tier:'large',
       r,
       sides:6,
       col:lCols[i%lCols.length],
-      hp:largeHpBase*2,
-      spd:.2,
+      hp:largeHpBase*40,
       val:35+chapter*3,
     }));
   }
 
   const giantScale=largeScale+0.45+Math.min(.45,chapter*.04);
   const giantR=(58+Math.random()*12)*giantScale;
-  const giantPos=findSpawnSpot(giantR,'large',66,H-230);
-  if(giantPos){
-    minerals.push(new Mineral({
-      x:giantPos.x,y:giantPos.y,type:'large',tier:'giant',
-      r:giantR,
-      sides:8,
-      col:'#8a4fff',
-      hp:largeHpBase*3,
-      spd:.2,
-      val:55+chapter*5,
-    }));
-  }
+  const giantPos={
+    x:W*.52+(Math.random()-.5)*70,
+    y:H*.35+(Math.random()-.5)*60,
+  };
+  minerals.push(new Mineral({
+    x:giantPos.x,y:giantPos.y,type:'large',tier:'giant',
+    r:giantR,
+    sides:8,
+    col:'#8a4fff',
+    hp:largeHpBase*60,
+    val:55+chapter*5,
+  }));
+  relaxMineralLayout();
 }
 
 /* ───── Mining ───── */
-function collectOre(val){
-  const free=CARRY_MAX-playerCargo;
-  if(free<=0) return;
-  const gained=Math.min(free,val);
-  playerCargo+=gained;
-  score+=gained;
-}
-
 function checkMining(){
   if(state!=='playing') return;
-  if(playerCargo>=CARRY_MAX) return;
   const tips=plr.tips();
 
   for(const m of minerals){
@@ -514,18 +684,18 @@ function checkMining(){
 
       if(m.type==='large'){
         const wd=Math.hypot(t.x-m.wx,t.y-m.wy);
-        const weakVisible=m.wReveal>=120||m.breakTime>0;
+        const weakVisible=m.wReveal>=WEAK_APPEAR_FRAMES&&m.breakTime<=0;
         if(weakVisible&&wd<17){
-          if(m.hit(true)) collectOre(m.val);
+          if(m.hit(true,t.x,t.y)) spawnOre(m.x,m.y,m.val,m.col,m.tier);
           break;
         }
         if(d<m.r+2){
-          if(m.hit(false)) collectOre(m.val);
+          if(m.hit(false,t.x,t.y)) spawnOre(m.x,m.y,m.val,m.col,m.tier);
           break;
         }
       } else {
         if(d<m.r+6){
-          if(m.hit()) collectOre(m.val);
+          if(m.hit()) spawnOre(m.x,m.y,m.val,m.col,m.tier);
           break;
         }
       }
@@ -546,25 +716,6 @@ function drawBg(){
 
 /* ───── HUD ───── */
 function drawHUD(){
-  /* cargo bar */
-  const gW=260,gH=22,gx=W/2-gW/2,gy=H-26;
-  ctx.fillStyle='#111';ctx.fillRect(gx-2,gy-2,gW+4,gH+4);
-  const cr=deliveredCargo/CARGO_MAX;
-  const cg=ctx.createLinearGradient(gx,0,gx+gW,0);
-  cg.addColorStop(0,cr>=1?'#f80':'#3a7cc0');
-  cg.addColorStop(1,cr>=1?'#ff0':'#7abff0');
-  ctx.fillStyle=cg;ctx.fillRect(gx,gy,gW*cr,gH);
-  ctx.strokeStyle='#666';ctx.lineWidth=2;ctx.strokeRect(gx,gy,gW,gH);
-  ctx.fillStyle='#fff';ctx.font='bold 12px Arial';ctx.textAlign='center';
-  if(deliveredCargo>=CARGO_MAX){
-    const f=.45+Math.sin(Date.now()/180)*.3;
-    ctx.fillStyle=`rgba(255,150,0,${f})`;ctx.fillRect(gx,gy,gW,gH);
-    ctx.fillStyle='#fff';ctx.font='bold 12px Arial';ctx.textAlign='center';
-    ctx.fillText('BASE 카고 가득!',W/2,gy+15);
-  } else {
-    ctx.fillText('BASE 카고 '+Math.floor(deliveredCargo)+' / '+CARGO_MAX,W/2,gy+15);
-  }
-
   /* chapter / score */
   ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(6,6,120,46);
   ctx.fillStyle='#adf';ctx.font='13px Arial';ctx.textAlign='left';
@@ -614,15 +765,19 @@ function drawHUD(){
 
 /* ───── Input ───── */
 const keys={w:false,a:false,s:false,d:false};
+function inputKey(e){
+  const byCode={KeyW:'w',KeyA:'a',KeyS:'s',KeyD:'d'};
+  return byCode[e.code]||e.key.toLowerCase();
+}
 window.addEventListener('keydown',e=>{
-  const k=e.key.toLowerCase();
+  const k=inputKey(e);
   if(k in keys){
     keys[k]=true;
     e.preventDefault();
   }
 });
 window.addEventListener('keyup',e=>{
-  const k=e.key.toLowerCase();
+  const k=inputKey(e);
   if(k in keys){
     keys[k]=false;
     e.preventDefault();
@@ -641,6 +796,7 @@ c.addEventListener('mousemove',e=>{
 
 function nextChapter(){
   chapter++;state='playing';deliveredCargo=0;playerCargo=0;
+  ores.length=0;
   plr.x=W/2;plr.y=H-95;plr.tx=W/2;plr.ty=H-95;
   spawnMinerals();
 }
@@ -656,6 +812,7 @@ function loop(){
   if(state!=='cleared'){
     plr.update();
     checkMining();
+    tickOres();
 
     if(playerCargo>0&&Math.hypot(plr.x-base.x,plr.y-base.y)<base.r+plr.r){
       deliveredCargo=Math.min(CARGO_MAX,deliveredCargo+playerCargo);
@@ -663,12 +820,12 @@ function loop(){
       playerCargo=0;
     }
 
-    if(state==='playing'&&minerals.length>0&&minerals.every(m=>m.mined)&&playerCargo<=0){
+    if(state==='playing'&&minerals.length>0&&minerals.every(m=>m.mined)&&ores.length<=0&&playerCargo<=0){
       state='cleared';
     }
   }
 
-  tickPts();drawPts();
+  tickPts();drawOres();drawPts();
   plr.draw();
   ctx.restore();
   drawHUD();
