@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -12,6 +12,230 @@ body {
   min-height:100vh;
   font-family:Arial,sans-serif;
   user-select:none;
+  color:#d7def7;
+}
+#stageWrap {
+  display:flex;
+  align-items:flex-start;
+  gap:16px;
+}
+#gameCol {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.sideCol {
+  width:168px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.sideCol.left {
+  width:300px;
+  align-items:flex-end;
+}
+.sideCol.right {
+  width:300px;
+}
+.sidePanel {
+  background:rgba(4,8,20,.82);
+  border:1px solid rgba(120,180,255,.22);
+  min-height:128px;
+  width:100%;
+  padding:10px 10px 12px;
+}
+.sideTitle {
+  color:#9fd6ff;
+  font-size:12px;
+  font-weight:bold;
+  margin-bottom:10px;
+}
+.sideLine {
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+  font-size:12px;
+  margin-bottom:8px;
+}
+.sideLine span:last-child {
+  color:#fff;
+}
+.sideLine.isAlert span {
+  color:#ffd75e;
+}
+.sideLine.isAlert span:last-child {
+  color:#ff7d7d;
+  text-shadow:0 0 10px rgba(255,85,85,.22);
+}
+.sideLineHint {
+  margin-top:6px;
+  font-size:11px;
+  line-height:1.4;
+  color:#8fa3c8;
+  text-align:right;
+}
+.sideLineHint.isAlert {
+  color:#ffd75e;
+}
+.legendRow {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  margin-bottom:10px;
+}
+.legendRow.top {
+  align-items:flex-start;
+}
+.dot {
+  width:10px;
+  height:10px;
+  border-radius:50%;
+  flex:0 0 auto;
+}
+.legendGlyph {
+  width:28px;
+  height:28px;
+  position:relative;
+  flex:0 0 auto;
+}
+.legendWeak::before {
+  content:"";
+  position:absolute;
+  inset:3px;
+  border:2px solid #ff4747;
+  border-radius:50%;
+}
+.legendWeak::after {
+  content:"X";
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#ffffff;
+  font-size:16px;
+  font-weight:bold;
+}
+.legendBreak::before,
+.legendBreak::after {
+  content:"";
+  position:absolute;
+  inset:1px;
+  clip-path:polygon(50% 0%, 88% 18%, 98% 54%, 76% 92%, 32% 100%, 4% 70%, 10% 24%);
+}
+.legendBreak::before {
+  background:#d4b54a;
+  opacity:.25;
+  transform:scale(1.18);
+}
+.legendBreak::after {
+  border:2px solid #d4b54a;
+  box-shadow:0 0 8px rgba(212,181,74,.55);
+}
+.legendHit::before {
+  content:"";
+  position:absolute;
+  inset:5px;
+  border-radius:50%;
+  background:#ff4747;
+  box-shadow:0 0 0 4px rgba(255,71,71,.22);
+}
+.legendHit::after {
+  content:"X";
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#ffffff;
+  font-size:15px;
+  font-weight:bold;
+  transform:scale(1.12);
+}
+.legendText {
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.legendText strong {
+  font-size:12px;
+  color:#fff;
+}
+.legendText span {
+  font-size:11px;
+  color:#9fb2d8;
+  line-height:1.35;
+}
+.testToggle {
+  width:100%;
+  background:#10203d;
+  color:#d7def7;
+  border:1px solid rgba(120,180,255,.28);
+  padding:8px 10px;
+  font-size:12px;
+  text-align:left;
+  cursor:pointer;
+}
+.sideAction {
+  width:100%;
+  margin-top:10px;
+  background:#10203d;
+  color:#d7def7;
+  border:1px solid rgba(120,180,255,.28);
+  padding:8px 10px;
+  font-size:12px;
+  text-align:left;
+  cursor:pointer;
+}
+.testPanel {
+  margin-top:10px;
+}
+.testPanel.isCollapsed {
+  display:none;
+}
+.testGrid {
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:10px 10px;
+}
+.testField {
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  font-size:12px;
+}
+.testField input {
+  width:100%;
+  background:#0b1326;
+  color:#fff;
+  border:1px solid rgba(120,180,255,.28);
+  padding:6px 8px;
+  font-size:12px;
+}
+.testField select {
+  width:100%;
+  background:#0b1326;
+  color:#fff;
+  border:1px solid rgba(120,180,255,.28);
+  padding:6px 8px;
+  font-size:12px;
+}
+.memoBox {
+  display:block;
+  width:100%;
+  min-height:180px;
+  resize:vertical;
+  background:#0b1326;
+  color:#dfe7ff;
+  border:1px solid rgba(120,180,255,.28);
+  padding:10px;
+  font-size:12px;
+  line-height:1.5;
+  font-family:Arial,sans-serif;
+}
+.memoBox::placeholder {
+  color:#6f82ab;
 }
 #hdr {
   color:#7af; font-size:20px; font-weight:bold;
@@ -19,18 +243,118 @@ body {
   text-shadow:0 0 12px #4af;
 }
 #hint {
-  color:#667; font-size:12px; margin-bottom:6px;
+  color:#fff; font-size:13px; margin-bottom:6px;
+  text-shadow:0 0 8px rgba(255,255,255,.14);
 }
 canvas { cursor:crosshair; display:block; }
 </style>
 </head>
 <body>
-<div id="hdr">⛏ SPIN MINER</div>
-<div id="hint">WASD/클릭/드래그로 이동 · 떨어진 광석을 주워 카고를 채우세요 · 광석은 BASE에서 비우세요</div>
+<div id="hdr"></div>
+<div id="hint"></div>
 <canvas id="c"></canvas>
 <script>
+const hdrEl = document.getElementById('hdr');
+const hintEl = document.getElementById('hint');
 const c = document.getElementById('c');
 const ctx = c.getContext('2d');
+const stageWrap = document.createElement('div');
+stageWrap.id = 'stageWrap';
+
+const leftCol = document.createElement('aside');
+leftCol.className = 'sideCol left';
+leftCol.innerHTML = `
+  <section class="sidePanel">
+    <div class="sideTitle">아이콘</div>
+    <div class="legendRow top">
+      <span class="legendGlyph legendWeak"></span>
+      <span class="legendText"><strong>약점 마크</strong><span>외곽선 근처에 등장하는 X 표식</span></span>
+    </div>
+    <div class="legendRow top">
+      <span class="legendGlyph legendHit"></span>
+      <span class="legendText"><strong>약점 피격</strong><span>약점 타격 시 즉시 커지며 명중 피드백 전달</span></span>
+    </div>
+    <div class="legendRow top">
+      <span class="legendGlyph legendBreak"></span>
+      <span class="legendText"><strong>브레이크 외곽선</strong><span>브레이크 상태와 잔여 시간을 외곽선 복귀로 안내</span></span>
+    </div>
+    <button id="spawnGiantBtn" class="sideAction" type="button">대형 광물 생성</button>
+  </section>
+  <section class="sidePanel">
+    <div class="sideTitle">메모</div>
+    <textarea id="memoBox" class="memoBox" placeholder="테스트 관련 메모를 적어둘 수 있어요."></textarea>
+  </section>
+`;
+
+const gameCol = document.createElement('main');
+gameCol.id = 'gameCol';
+hdrEl.textContent = 'SPIN MINER 브레이크 시스템';
+hintEl.textContent = 'WASD/클릭으로 이동 · 테스트 패널로 수치 조절 가능 ';
+gameCol.append(hdrEl, hintEl, c);
+
+const rightCol = document.createElement('aside');
+rightCol.className = 'sideCol right';
+rightCol.innerHTML = `
+  <section class="sidePanel">
+    <div class="sideTitle">정보</div>            
+    <div class="sideLine"><span>약점 노출 타수</span><span id="rule-reveal-threshold">120타</span></div>
+    <div id="rule-reveal-min-hp-line" class="sideLine"><span>약점 노출 하한 비율</span><span id="rule-reveal-min-hp">없음</span></div>
+    <div id="rule-reveal-min-hp-hint" class="sideLineHint"></div>
+    <div class="sideLine"><span>약점 피격 범위</span><span id="rule-weak-radius">17px</span></div>
+    <div class="sideLine"><span>브레이크 진입 타수</span><span id="rule-break-hits">80타</span></div>
+    <div class="sideLine"><span>브레이크 지속 시간(초)</span><span id="rule-break-time">300f</span></div>
+    <div class="sideLine"><span>곡괭이 1타 피해량</span><span id="rule-base-dmg">9.2</span></div>
+    <div class="sideLine"><span>브레이크 1타 피해량</span><span id="rule-break-dmg">16.56</span></div>    
+    <div class="sideLine"><span>대형 광물 파괴 시간</span><span id="rule-giant-ttk">-</span></div>
+  </section>
+  <section class="sidePanel">
+    <button id="testToggle" class="testToggle" type="button">테스트 패널 열기</button>
+    <div id="testPanel" class="testPanel isCollapsed">
+      <div class="sideTitle">테스트(실시간 반영)</div>
+      <div class="testGrid">
+        <label class="testField"><span>약점 노출 타수</span><input id="testRevealThreshold" type="number" min="10" max="600" step="1"></label>
+        <label class="testField"><span>약점 노출 하한 비율(%)</span><input id="testRevealMinHp" type="number" min="0" max="100" step="1"></label>
+        <label class="testField"><span>브레이크 진입 타수</span><input id="testWeakBreakHits" type="number" min="10" max="240" step="1"></label>
+        <label class="testField"><span>브레이크 지속 시간(초)</span><input id="testBreakTime" type="number" min="1" max="15" step="0.5"></label>
+        <label class="testField"><span>곡괭이 1타 피해</span><input id="testBaseDamage" type="number" min="1" max="50" step="0.1"></label>
+        <label class="testField"><span>브레이크 피해 배율</span><input id="testBreakMultiplier" type="number" min="1" max="5" step="0.05"></label>
+      </div>
+    </div>
+  </section>
+`;
+
+stageWrap.append(leftCol, gameCol, rightCol);
+document.body.append(stageWrap);
+
+const ruleWeakRadius = rightCol.querySelector('#rule-weak-radius');
+const ruleRevealThreshold = rightCol.querySelector('#rule-reveal-threshold');
+const ruleRevealMinHp = rightCol.querySelector('#rule-reveal-min-hp');
+const ruleRevealMinHpLine = rightCol.querySelector('#rule-reveal-min-hp-line');
+const ruleRevealMinHpHint = rightCol.querySelector('#rule-reveal-min-hp-hint');
+const ruleBreakHits = rightCol.querySelector('#rule-break-hits');
+const ruleBreakTime = rightCol.querySelector('#rule-break-time');
+const ruleBaseDmg = rightCol.querySelector('#rule-base-dmg');
+const ruleBreakDmg = rightCol.querySelector('#rule-break-dmg');
+const ruleGiantTtk = rightCol.querySelector('#rule-giant-ttk');
+const spawnGiantBtn = leftCol.querySelector('#spawnGiantBtn');
+const memoBox = leftCol.querySelector('#memoBox');
+const testToggle = rightCol.querySelector('#testToggle');
+const testPanel = rightCol.querySelector('#testPanel');
+const testRevealThreshold = rightCol.querySelector('#testRevealThreshold');
+const testRevealMinHp = rightCol.querySelector('#testRevealMinHp');
+const testWeakBreakHits = rightCol.querySelector('#testWeakBreakHits');
+const testBreakTime = rightCol.querySelector('#testBreakTime');
+const testBaseDamage = rightCol.querySelector('#testBaseDamage');
+const testBreakMultiplier = rightCol.querySelector('#testBreakMultiplier');
+
+function syncSidePanelOffset(){
+  const offset = c.getBoundingClientRect().top - stageWrap.getBoundingClientRect().top;
+  leftCol.style.paddingTop = `${Math.max(0, Math.round(offset))}px`;
+  rightCol.style.paddingTop = `${Math.max(0, Math.round(offset))}px`;
+}
+window.addEventListener('resize', syncSidePanelOffset);
+requestAnimationFrame(syncSidePanelOffset);
+
 const W = c.width  = 820;
 const H = c.height = 590;
 
@@ -174,20 +498,139 @@ function mineralNumber(hp){
 }
 
 function mineralGap(a,b){
-  return a.r+b.r+(a.type==='large'||b.type==='large'?42:30);
+  return a.r+b.r+(a.tier==='giant'||b.tier==='giant'?88:30);
 }
 
-const WEAK_APPEAR_FRAMES = 120;
-const WEAK_BREAK_GAIN = 1.25;
+function normalizeAngle(a){
+  while(a<=-Math.PI) a+=Math.PI*2;
+  while(a>Math.PI) a-=Math.PI*2;
+  return a;
+}
+
+let WEAK_APPEAR_HITS = 120;
+let WEAK_REVEAL_MIN_RATIO = 15;
+let WEAK_BREAK_HITS = 80;
 const WEAK_MOVE_FRAMES = 390;
-const BREAK_TIME_FRAMES = 300;
-const PICKAXE_DAMAGE = 9.2;
-const BREAK_DAMAGE_MULTIPLIER = 1.8;
-const WEAK_OFFSET_MIN = .42;
-const WEAK_OFFSET_MAX = .78;
+const WEAK_REVEAL_IDLE_FRAMES = 180;
+let BREAK_TIME_FRAMES = 240;
+let PICKAXE_DAMAGE = 9.2;
+let BREAK_DAMAGE_MULTIPLIER = 1.5;
+let WEAK_RADIUS = 30;
+const MEMO_STORAGE_KEY = 'spin-miner-break-memo';
+const FPS = 60;
+const WEAK_OFFSET_MIN = .72;
+const WEAK_OFFSET_MAX = 1.18;
+const WEAK_HIT_SEPARATION = 42;
 const ORE_PICKUP_RADIUS = 28;
 const ORE_MAGNET_RADIUS = 86;
 const ORE_MAGNET_SPEED = 4.2;
+
+function weakRevealTargetText(){
+  return Math.round(WEAK_APPEAR_HITS) + '타';
+}
+
+function framesToSeconds(frames){
+  return frames / FPS;
+}
+
+function secondsToFrames(seconds){
+  return Math.max(1, Math.round(seconds * FPS));
+}
+
+function formatSeconds(seconds){
+  return Number.isInteger(seconds) ? `${seconds}` : seconds.toFixed(1);
+}
+
+function renderRulePanel(){
+  ruleRevealThreshold.textContent = weakRevealTargetText();
+  ruleRevealMinHp.textContent = WEAK_REVEAL_MIN_RATIO > 0 ? `${WEAK_REVEAL_MIN_RATIO}% 이하 약점 미노출` : '없음';
+  ruleWeakRadius.textContent = WEAK_RADIUS + 'px';
+  ruleBreakHits.textContent = WEAK_BREAK_HITS + '타';
+  ruleBreakTime.textContent = `${formatSeconds(framesToSeconds(BREAK_TIME_FRAMES))}초`;
+  ruleBaseDmg.textContent = PICKAXE_DAMAGE.toFixed(1);
+  ruleBreakDmg.textContent = (PICKAXE_DAMAGE * BREAK_DAMAGE_MULTIPLIER).toFixed(2);
+}
+
+function getActiveGiant(){
+  return minerals.find(m=>!m.mined&&m.tier==='giant')||null;
+}
+
+function renderRuleRuntime(){
+  const giant=getActiveGiant();
+  const revealBlocked=!!(giant&&giant.revealBlockedByHp()&&!giant.weakVisible());
+  ruleRevealMinHpLine.classList.toggle('isAlert', revealBlocked);
+  ruleRevealMinHpHint.classList.toggle('isAlert', revealBlocked);
+  ruleRevealMinHpHint.textContent = revealBlocked
+    ? '약점 노출되지 않음'
+    : '';
+  if(giant&&giant.damageStartAt){
+    ruleGiantTtk.textContent = `${((performance.now()-giant.damageStartAt)/1000).toFixed(1)}초`;
+    return;
+  }
+  if(lastGiantTtkSeconds!==null){
+    ruleGiantTtk.textContent = `${lastGiantTtkSeconds.toFixed(1)}초`;
+    return;
+  }
+  ruleGiantTtk.textContent = '-';
+}
+
+function syncTestInputs(){
+  testRevealThreshold.value = String(Math.round(WEAK_APPEAR_HITS));
+  testRevealMinHp.value = String(WEAK_REVEAL_MIN_RATIO);
+  testWeakBreakHits.value = String(WEAK_BREAK_HITS);
+  testBreakTime.value = formatSeconds(framesToSeconds(BREAK_TIME_FRAMES));
+  testBaseDamage.value = PICKAXE_DAMAGE.toFixed(1);
+  testBreakMultiplier.value = BREAK_DAMAGE_MULTIPLIER.toFixed(2);
+}
+
+function bindTestInputs(){
+  if(memoBox){
+    try {
+      memoBox.value = localStorage.getItem(MEMO_STORAGE_KEY) || '';
+    } catch (err) {}
+    memoBox.addEventListener('input',()=>{
+      try {
+        localStorage.setItem(MEMO_STORAGE_KEY, memoBox.value);
+      } catch (err) {}
+    });
+  }
+  spawnGiantBtn.addEventListener('click',()=>{
+    spawnDebugGiant();
+  });
+  testToggle.addEventListener('click',()=>{
+    const collapsed = testPanel.classList.toggle('isCollapsed');
+    testToggle.textContent = collapsed ? '테스트 패널 열기' : '테스트 패널 닫기';
+  });
+  testRevealThreshold.addEventListener('input',()=>{
+    WEAK_APPEAR_HITS = Math.max(10, Math.min(600, Number(testRevealThreshold.value) || WEAK_APPEAR_HITS));
+    renderRulePanel();
+  });
+  testRevealMinHp.addEventListener('input',()=>{
+    WEAK_REVEAL_MIN_RATIO = Math.max(0, Math.min(100, Number(testRevealMinHp.value) || 0));
+    renderRulePanel();
+  });
+  testWeakBreakHits.addEventListener('input',()=>{
+    WEAK_BREAK_HITS = Math.max(10, Math.min(240, Number(testWeakBreakHits.value) || WEAK_BREAK_HITS));
+    renderRulePanel();
+  });
+  testBreakTime.addEventListener('input',()=>{
+    const nextSeconds = Math.max(1, Math.min(15, Number(testBreakTime.value) || framesToSeconds(BREAK_TIME_FRAMES)));
+    BREAK_TIME_FRAMES = secondsToFrames(nextSeconds);
+    renderRulePanel();
+  });
+  testBaseDamage.addEventListener('input',()=>{
+    PICKAXE_DAMAGE = Math.max(1, Math.min(50, Number(testBaseDamage.value) || PICKAXE_DAMAGE));
+    renderRulePanel();
+  });
+  testBreakMultiplier.addEventListener('input',()=>{
+    BREAK_DAMAGE_MULTIPLIER = Math.max(1, Math.min(5, Number(testBreakMultiplier.value) || BREAK_DAMAGE_MULTIPLIER));
+    renderRulePanel();
+  });
+}
+
+renderRulePanel();
+syncTestInputs();
+bindTestInputs();
 
 function findSpawnSpot(r,type,top,bottom){
   for(let tries=0;tries<260;tries++){
@@ -283,33 +726,52 @@ class Mineral {
     this.ang   = Math.random()*6.28;
     this.spin  = (Math.random()-.5)*.007;
     this.hitImpact = 0;
-    if(this.type==='large'){
-      this.crack  = 0;
+    if(this.tier==='giant'){
+      this.weakBreakHits = 0;
       this.wAng   = Math.random()*6.28;
       this.wPulse = 0;
       this.wHitPulse = 0;
       this.wMoveTick = 0;
-      this.wReveal = 0;
+      this.weakIdleFrames = 0;
+      this.wRevealHits = 0;
+      this.wRevealReady = false;
       this.wWasVisible = false;
       this.breakTime = 0;
+      this.damageStartAt = null;
       this.cLines = Array.from({length:9},()=>({a:Math.random()*6.28,len:.2+Math.random()*.65}));
     }
   }
   get wx(){ return this.x+Math.cos(this.wAng)*this.r*.86; }
   get wy(){ return this.y+Math.sin(this.wAng)*this.r*.86; }
+  breakProgress(){
+    return Math.min(1, this.weakBreakHits / Math.max(1, WEAK_BREAK_HITS));
+  }
+  revealBlockedByHp(){
+    return WEAK_REVEAL_MIN_RATIO > 0 && (this.hp / Math.max(1, this.maxHp)) * 100 <= WEAK_REVEAL_MIN_RATIO;
+  }
+  weakVisible(){
+    if(this.breakTime>0) return false;
+    return this.wRevealHits >= WEAK_APPEAR_HITS;
+  }
 
   hit(isWeak, hitX, hitY){
     if(this.hitImpact<=0) this.hitImpact=10;
-    if(this.type==='large'){
-      const wasHidden=this.wReveal<=0;
-      const weakVisible=this.wReveal>=WEAK_APPEAR_FRAMES&&this.breakTime<=0;
+    if(this.tier==='giant'){
+      if(!this.damageStartAt && this.hp < this.maxHp){
+        this.damageStartAt = performance.now();
+      }
+      const wasHidden=this.wRevealHits<=0&&!this.wRevealReady;
+      const weakVisible=this.weakVisible();
+      this.weakIdleFrames = 0;
       if(isWeak&&weakVisible){
         this.wHitPulse=Math.min(1,this.wHitPulse+.75);
-        const old=this.crack;
-        this.crack=Math.min(100,this.crack+WEAK_BREAK_GAIN);
-        if(this.crack>=100&&old<100){
+        const old=this.weakBreakHits;
+        this.weakBreakHits=Math.min(WEAK_BREAK_HITS,this.weakBreakHits+1);
+        if(this.weakBreakHits>=WEAK_BREAK_HITS&&old<WEAK_BREAK_HITS){
           this.breakTime=BREAK_TIME_FRAMES;
-          this.wReveal=0;
+          this.wRevealHits=0;
+          this.weakBreakHits=0;
+          this.wRevealReady=false;
           this.wWasVisible=false;
           shake(10);spawnPts(this.x,this.y,'#ff0',25);
         }
@@ -319,13 +781,21 @@ class Mineral {
         const dmg=this.breakTime>0?PICKAXE_DAMAGE*BREAK_DAMAGE_MULTIPLIER:PICKAXE_DAMAGE;
         this.hp-=dmg;
         if(this.breakTime<=0&&wasHidden&&hitX!==undefined&&hitY!==undefined){
-          const side=Math.random()<.5?-1:1;
-          const off=WEAK_OFFSET_MIN+Math.random()*(WEAK_OFFSET_MAX-WEAK_OFFSET_MIN);
-          this.wAng=Math.atan2(hitY-this.y,hitX-this.x)+side*off;
+          const hitAng=Math.atan2(hitY-this.y,hitX-this.x);
+          let nextAng=hitAng;
+          for(let tries=0;tries<8;tries++){
+            const side=Math.random()<.5?-1:1;
+            const off=WEAK_OFFSET_MIN+Math.random()*(WEAK_OFFSET_MAX-WEAK_OFFSET_MIN);
+            nextAng=normalizeAngle(hitAng+side*off);
+            const testX=this.x+Math.cos(nextAng)*this.r*.86;
+            const testY=this.y+Math.sin(nextAng)*this.r*.86;
+            if(Math.hypot(testX-hitX,testY-hitY)>=WEAK_HIT_SEPARATION) break;
+          }
+          this.wAng=nextAng;
           this.wMoveTick=0;
         }
-        if(this.breakTime<=0&&!weakVisible){
-          this.wReveal=Math.min(WEAK_APPEAR_FRAMES,this.wReveal+1);
+        if(this.breakTime<=0&&!weakVisible&&!this.revealBlockedByHp()){
+          this.wRevealHits=Math.min(9999,this.wRevealHits+1);
         }
         if(this.breakTime>0) spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,'#ff8',5);
         else spawnPts(this.x+(Math.random()-.5)*this.r,this.y+(Math.random()-.5)*this.r,'#ffe66d',2);
@@ -336,6 +806,9 @@ class Mineral {
     }
     if(this.hp<=0){
       this.hp=0; this.mined=true;
+      if(this.tier==='giant' && this.damageStartAt){
+        lastGiantTtkSeconds = (performance.now() - this.damageStartAt) / 1000;
+      }
       spawnPts(this.x,this.y,this.col,15); shake(5);
       return true;
     }
@@ -345,15 +818,17 @@ class Mineral {
   update(){
     this.ang+=this.spin;
     if(this.hitImpact>0) this.hitImpact--;
-    if(this.type==='large'){
+    if(this.tier==='giant'){
       this.wPulse+=.05;
       this.wHitPulse*=.68;
       if(this.breakTime>0){
         this.breakTime--;
         if(this.breakTime<=0){
           this.breakTime=0;
-          this.crack=0;
-          this.wReveal=0;
+          this.weakBreakHits=0;
+          this.weakIdleFrames=0;
+          this.wRevealHits=0;
+          this.wRevealReady=false;
           this.wWasVisible=false;
           this.wMoveTick=0;
           this.wAng=Math.random()*6.28;
@@ -361,13 +836,24 @@ class Mineral {
         }
       }
       const wasVisible=this.wWasVisible;
-      this.wWasVisible=this.wReveal>=WEAK_APPEAR_FRAMES&&this.breakTime<=0;
+      this.wWasVisible=this.weakVisible();
       if(this.wWasVisible&&!wasVisible){
         shake(3);
         spawnPts(this.wx,this.wy,'#f44',18);
       }
-      if(this.wReveal>=WEAK_APPEAR_FRAMES||this.breakTime>0) this.wMoveTick++;
-      if(this.wReveal>=WEAK_APPEAR_FRAMES&&this.breakTime<=0&&this.wMoveTick>WEAK_MOVE_FRAMES){
+      if(this.wWasVisible){
+        this.weakIdleFrames++;
+        if(this.weakIdleFrames>=WEAK_REVEAL_IDLE_FRAMES){
+          this.weakIdleFrames=0;
+          this.wRevealHits=0;
+          this.weakBreakHits=0;
+          this.wWasVisible=false;
+          this.wMoveTick=0;
+          spawnPts(this.wx,this.wy,'#777',8);
+        }
+      }
+      if(this.wWasVisible||this.breakTime>0) this.wMoveTick++;
+      if(this.wWasVisible&&this.wMoveTick>WEAK_MOVE_FRAMES){
         this.wMoveTick=0;
         this.wAng=Math.random()*6.28;
         spawnPts(this.wx,this.wy,'#f44',10);
@@ -382,7 +868,7 @@ class Mineral {
     const pulseScale=1-Math.sin(hitT*3.14)*.04;
     const rr=this.r*pulseScale;
 
-    if(this.type==='large'){
+    if(this.tier==='giant'){
       /* body */
       if(this.breakTime>0){
         ctx.save();ctx.shadowColor='#ff8';ctx.shadowBlur=22;
@@ -393,9 +879,10 @@ class Mineral {
       }
 
       /* crack lines */
-      if(this.crack>0){
+      const breakProgress=this.breakProgress();
+      if(breakProgress>0){
         ctx.save();
-        ctx.globalAlpha=Math.min(.85,this.crack/100);
+        ctx.globalAlpha=Math.min(.85,breakProgress);
         ctx.strokeStyle='#fff';ctx.lineWidth=1.5;
         for(const cl of this.cLines){
           ctx.beginPath();
@@ -414,11 +901,11 @@ class Mineral {
       }
 
       /* weak point */
-      if(this.wReveal>=WEAK_APPEAR_FRAMES&&this.breakTime<=0){
-        const grow=this.crack/100;
+      if(this.weakVisible()){
+        const grow=breakProgress;
         const hitPop=this.wHitPulse;
         const wp=8+grow*15+hitPop*7+Math.sin(this.wPulse*3)*(2+grow*2);
-        const wc=this.crack>=75?'#ff4':'#f22';
+        const wc=breakProgress>=0.75?'#ff4':'#f22';
         ctx.save();
         ctx.beginPath();ctx.arc(this.wx,this.wy,wp,0,6.28);
         ctx.fillStyle=wc;ctx.fill();
@@ -601,9 +1088,11 @@ let state='playing'; // playing | cleared
 let chapter=1, deliveredCargo=0, playerCargo=0, score=0;
 const CARGO_MAX=100;
 const CARRY_MAX=100;
+let lastGiantTtkSeconds=null;
 
 function spawnMinerals(){
   minerals=[];
+  lastGiantTtkSeconds=null;
   const nCols=['#5f8','#f65','#57f','#ff5','#f5f','#5ff','#fa5','#5af'];
   const nSides=[3,4,5,6,7,8];
   const smallCount=4+Math.floor(chapter*.8);
@@ -638,23 +1127,8 @@ function spawnMinerals(){
     }));
   }
 
-  const lCount=1+Math.floor(chapter/2);
   const lCols=['#f84','#84f','#4f8','#f44','#48f','#fa0'];
   const largeHpBase=240+chapter*28+Math.floor((largeScale-1)*180);
-  for(let i=0;i<lCount;i++){
-    const r=(42+Math.random()*10+i*2)*largeScale;
-    const mainPos={x:W*.3+(Math.random()-.5)*60,y:H*.33+(Math.random()-.5)*70};
-    const pos=i===0?mainPos:(findSpawnSpot(r,'large',62,H-215)||fallbackSpawnSpot(r,i,lCount,62,H-215));
-    minerals.push(new Mineral({
-      x:pos.x,y:pos.y,type:'large',tier:'large',
-      r,
-      sides:6,
-      col:lCols[i%lCols.length],
-      hp:largeHpBase*40,
-      val:35+chapter*3,
-    }));
-  }
-
   const giantScale=largeScale+0.45+Math.min(.45,chapter*.04);
   const giantR=(58+Math.random()*12)*giantScale;
   const giantPos={
@@ -662,10 +1136,30 @@ function spawnMinerals(){
     y:H*.35+(Math.random()-.5)*60,
   };
   minerals.push(new Mineral({
-    x:giantPos.x,y:giantPos.y,type:'large',tier:'giant',
+    x:giantPos.x,y:giantPos.y,type:'giant',tier:'giant',
     r:giantR,
     sides:8,
-    col:'#8a4fff',
+    col:lCols[chapter%lCols.length]||'#8a4fff',
+    hp:largeHpBase*60,
+    val:55+chapter*5,
+  }));
+  relaxMineralLayout();
+}
+
+function spawnDebugGiant(){
+  if(getActiveGiant()) return;
+  lastGiantTtkSeconds=null;
+  const lCols=['#f84','#84f','#4f8','#f44','#48f','#fa0'];
+  const largeScale=1.2+Math.min(.75,(chapter-1)*.08);
+  const largeHpBase=240+chapter*28+Math.floor((largeScale-1)*180);
+  const giantScale=largeScale+0.45+Math.min(.45,chapter*.04);
+  const giantR=(58+Math.random()*12)*giantScale;
+  const pos=findSpawnSpot(giantR,'giant',50,H-240)||{ x:W*.52, y:H*.33 };
+  minerals.push(new Mineral({
+    x:pos.x,y:pos.y,type:'giant',tier:'giant',
+    r:giantR,
+    sides:8,
+    col:lCols[chapter%lCols.length]||'#8a4fff',
     hp:largeHpBase*60,
     val:55+chapter*5,
   }));
@@ -682,10 +1176,10 @@ function checkMining(){
     for(const t of tips){
       const d=Math.hypot(t.x-m.x,t.y-m.y);
 
-      if(m.type==='large'){
+      if(m.tier==='giant'){
         const wd=Math.hypot(t.x-m.wx,t.y-m.wy);
-        const weakVisible=m.wReveal>=WEAK_APPEAR_FRAMES&&m.breakTime<=0;
-        if(weakVisible&&wd<17){
+        const weakVisible=m.weakVisible();
+        if(weakVisible&&wd<WEAK_RADIUS){
           if(m.hit(true,t.x,t.y)) spawnOre(m.x,m.y,m.val,m.col,m.tier);
           break;
         }
@@ -828,6 +1322,7 @@ function loop(){
   tickPts();drawOres();drawPts();
   plr.draw();
   ctx.restore();
+  renderRuleRuntime();
   drawHUD();
   requestAnimationFrame(loop);
 }
