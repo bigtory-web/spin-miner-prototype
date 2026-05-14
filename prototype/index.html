@@ -167,16 +167,6 @@ body {
   color:#9fb2d8;
   line-height:1.35;
 }
-.testToggle {
-  width:100%;
-  background:#10203d;
-  color:#d7def7;
-  border:1px solid rgba(120,180,255,.28);
-  padding:8px 10px;
-  font-size:12px;
-  text-align:left;
-  cursor:pointer;
-}
 .sideAction {
   width:100%;
   margin-top:10px;
@@ -190,9 +180,6 @@ body {
 }
 .testPanel {
   margin-top:10px;
-}
-.testPanel.isCollapsed {
-  display:none;
 }
 .testGrid {
   display:grid;
@@ -308,8 +295,7 @@ rightCol.innerHTML = `
     <div class="sideLine"><span>대형 광물 파괴 시간</span><span id="rule-giant-ttk">-</span></div>
   </section>
   <section class="sidePanel">
-    <button id="testToggle" class="testToggle" type="button">테스트 패널 열기</button>
-    <div id="testPanel" class="testPanel isCollapsed">
+    <div id="testPanel" class="testPanel">
       <div class="sideTitle">테스트(실시간 반영)</div>
       <div class="testGrid">
         <label class="testField"><span>약점 노출 타수</span><input id="testRevealThreshold" type="number" min="10" max="600" step="1"></label>
@@ -338,7 +324,6 @@ const ruleBreakDmg = rightCol.querySelector('#rule-break-dmg');
 const ruleGiantTtk = rightCol.querySelector('#rule-giant-ttk');
 const spawnGiantBtn = leftCol.querySelector('#spawnGiantBtn');
 const memoBox = leftCol.querySelector('#memoBox');
-const testToggle = rightCol.querySelector('#testToggle');
 const testPanel = rightCol.querySelector('#testPanel');
 const testRevealThreshold = rightCol.querySelector('#testRevealThreshold');
 const testRevealMinHp = rightCol.querySelector('#testRevealMinHp');
@@ -596,10 +581,6 @@ function bindTestInputs(){
   }
   spawnGiantBtn.addEventListener('click',()=>{
     spawnDebugGiant();
-  });
-  testToggle.addEventListener('click',()=>{
-    const collapsed = testPanel.classList.toggle('isCollapsed');
-    testToggle.textContent = collapsed ? '테스트 패널 열기' : '테스트 패널 닫기';
   });
   testRevealThreshold.addEventListener('input',()=>{
     WEAK_APPEAR_HITS = Math.max(10, Math.min(600, Number(testRevealThreshold.value) || WEAK_APPEAR_HITS));
