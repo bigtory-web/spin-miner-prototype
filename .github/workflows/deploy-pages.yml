@@ -28,10 +28,17 @@ jobs:
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
+      - name: Prepare site artifact
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp -r prototype/. _site/
+          touch _site/.nojekyll
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./prototype
+          path: ./_site
 
       - name: Deploy to GitHub Pages
         id: deployment
