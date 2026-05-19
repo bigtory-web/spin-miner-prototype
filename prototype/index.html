@@ -255,7 +255,7 @@ leftCol.innerHTML = `
     <div class="sideTitle">아이콘</div>
     <div class="legendRow top">
       <span class="legendGlyph legendWeak"></span>
-      <span class="legendText"><strong>약점 마크</strong><span>외곽선 근처에 등장하는 X 표식</span></span>
+      <span class="legendText"><strong>약점 </strong><span>외곽선 근처에 등장하는 X 표식</span></span>
     </div>
     <div class="legendRow top">
       <span class="legendGlyph legendHit"></span>
@@ -263,9 +263,9 @@ leftCol.innerHTML = `
     </div>
     <div class="legendRow top">
       <span class="legendGlyph legendBreak"></span>
-      <span class="legendText"><strong>브레이크 외곽선</strong><span>브레이크 상태와 잔여 시간을 외곽선 복귀로 안내</span></span>
+      <span class="legendText"><strong>취약 상태 외곽선</strong><span>취약 상태 잔여 시간을 외곽선 복귀로 안내</span></span>
     </div>
-    <button id="spawnGiantBtn" class="sideAction" type="button">대형 광물 생성</button>
+    <button id="spawnGiantBtn" class="sideAction" type="button">HP 높은 광석 생성</button>
   </section>
   <section class="sidePanel">
     <div class="sideTitle">메모</div>
@@ -275,8 +275,8 @@ leftCol.innerHTML = `
 
 const gameCol = document.createElement('main');
 gameCol.id = 'gameCol';
-hdrEl.textContent = 'SPIN MINER 브레이크 시스템';
-hintEl.textContent = 'WASD/클릭으로 이동 · 테스트 패널로 수치 조절 가능 ';
+hdrEl.textContent = 'SPIN MINER 광석 약점 시스템';
+hintEl.textContent = 'WASD/클릭으로 이동해 HP 높은 광석을 공격하세요. ';
 gameCol.append(hdrEl, hintEl, c);
 
 const rightCol = document.createElement('aside');
@@ -288,22 +288,22 @@ rightCol.innerHTML = `
     <div id="rule-reveal-min-hp-line" class="sideLine"><span>약점 노출 하한 비율</span><span id="rule-reveal-min-hp">없음</span></div>
     <div id="rule-reveal-min-hp-hint" class="sideLineHint"></div>
     <div class="sideLine"><span>약점 피격 범위</span><span id="rule-weak-radius">17px</span></div>
-    <div class="sideLine"><span>브레이크 진입 타수</span><span id="rule-break-hits">80타</span></div>
-    <div class="sideLine"><span>브레이크 지속 시간(초)</span><span id="rule-break-time">300f</span></div>
-    <div class="sideLine"><span>곡괭이 1타 피해량</span><span id="rule-base-dmg">9.2</span></div>
-    <div class="sideLine"><span>브레이크 1타 피해량</span><span id="rule-break-dmg">16.56</span></div>    
-    <div class="sideLine"><span>대형 광물 파괴 시간</span><span id="rule-giant-ttk">-</span></div>
+    <div class="sideLine"><span>취약 상태 진입 타수</span><span id="rule-break-hits">80타</span></div>
+    <div class="sideLine"><span>취약 상태 지속 시간(초)</span><span id="rule-break-time">300f</span></div>
+    <div class="sideLine"><span>1타 피해량</span><span id="rule-base-dmg">9.2</span></div>
+    <div class="sideLine"><span>효율 적용 1타 피해량</span><span id="rule-break-dmg">16.56</span></div>    
+    <div class="sideLine"><span>HP 높은 광석 파괴 시간</span><span id="rule-giant-ttk">-</span></div>
   </section>
   <section class="sidePanel">
     <div id="testPanel" class="testPanel">
-      <div class="sideTitle">테스트(실시간 반영)</div>
+      <div class="sideTitle">테스트 데이터(실시간 반영)</div>
       <div class="testGrid">
         <label class="testField"><span>약점 노출 타수</span><input id="testRevealThreshold" type="number" min="10" max="600" step="1"></label>
         <label class="testField"><span>약점 노출 하한 비율(%)</span><input id="testRevealMinHp" type="number" min="0" max="100" step="1"></label>
-        <label class="testField"><span>브레이크 진입 타수</span><input id="testWeakBreakHits" type="number" min="10" max="240" step="1"></label>
-        <label class="testField"><span>브레이크 지속 시간(초)</span><input id="testBreakTime" type="number" min="1" max="15" step="0.5"></label>
+        <label class="testField"><span>취약상태 진입 타수</span><input id="testWeakBreakHits" type="number" min="10" max="240" step="1"></label>
+        <label class="testField"><span>취약상태 지속 시간(초)</span><input id="testBreakTime" type="number" min="1" max="15" step="0.5"></label>
         <label class="testField"><span>곡괭이 1타 피해</span><input id="testBaseDamage" type="number" min="1" max="50" step="0.1"></label>
-        <label class="testField"><span>브레이크 피해 배율</span><input id="testBreakMultiplier" type="number" min="1" max="5" step="0.05"></label>
+        <label class="testField"><span>공격 피해 배율</span><input id="testBreakMultiplier" type="number" min="1" max="5" step="0.05"></label>
       </div>
     </div>
   </section>
@@ -492,10 +492,10 @@ function normalizeAngle(a){
   return a;
 }
 
-let WEAK_APPEAR_HITS = 120;
+let WEAK_APPEAR_HITS = 20;
 let WEAK_REVEAL_MIN_RATIO = 15;
-let WEAK_BREAK_HITS = 80;
-const WEAK_MOVE_FRAMES = 390;
+let WEAK_BREAK_HITS = 40;
+const WEAK_MOVE_FRAMES = 200;
 const WEAK_REVEAL_IDLE_FRAMES = 180;
 let BREAK_TIME_FRAMES = 240;
 let PICKAXE_DAMAGE = 9.2;
@@ -505,10 +505,18 @@ const MEMO_STORAGE_KEY = 'spin-miner-break-memo';
 const FPS = 60;
 const WEAK_OFFSET_MIN = .72;
 const WEAK_OFFSET_MAX = 1.18;
+const WEAK_MOVE_STEP_MIN = .35;
+const WEAK_MOVE_STEP_MAX = .85;
 const WEAK_HIT_SEPARATION = 42;
 const ORE_PICKUP_RADIUS = 28;
 const ORE_MAGNET_RADIUS = 86;
 const ORE_MAGNET_SPEED = 4.2;
+
+function nextWeakMoveAngle(currentAngle){
+  const side=Math.random()<.5?-1:1;
+  const off=WEAK_MOVE_STEP_MIN+Math.random()*(WEAK_MOVE_STEP_MAX-WEAK_MOVE_STEP_MIN);
+  return normalizeAngle(currentAngle + side * off);
+}
 
 function weakRevealTargetText(){
   return Math.round(WEAK_APPEAR_HITS) + '타';
@@ -707,6 +715,7 @@ class Mineral {
     this.ang   = Math.random()*6.28;
     this.spin  = (Math.random()-.5)*.007;
     this.hitImpact = 0;
+    this.activeTipContacts = new Map();
     if(this.tier==='giant'){
       this.weakBreakHits = 0;
       this.wAng   = Math.random()*6.28;
@@ -727,12 +736,26 @@ class Mineral {
   breakProgress(){
     return Math.min(1, this.weakBreakHits / Math.max(1, WEAK_BREAK_HITS));
   }
+  weakHitRadius(){
+    const grow=this.breakProgress();
+    const hitPop=this.wHitPulse;
+    return 8+grow*15+hitPop*7+Math.sin(this.wPulse*3)*(2+grow*2);
+  }
   revealBlockedByHp(){
     return WEAK_REVEAL_MIN_RATIO > 0 && (this.hp / Math.max(1, this.maxHp)) * 100 <= WEAK_REVEAL_MIN_RATIO;
   }
   weakVisible(){
     if(this.breakTime>0) return false;
     return this.wRevealHits >= WEAK_APPEAR_HITS;
+  }
+  registerTipContact(tipIndex, contactType){
+    if(!contactType){
+      this.activeTipContacts.delete(tipIndex);
+      return false;
+    }
+    if(this.activeTipContacts.get(tipIndex) === contactType) return false;
+    this.activeTipContacts.set(tipIndex, contactType);
+    return true;
   }
 
   hit(isWeak, hitX, hitY){
@@ -836,7 +859,7 @@ class Mineral {
       if(this.wWasVisible||this.breakTime>0) this.wMoveTick++;
       if(this.wWasVisible&&this.wMoveTick>WEAK_MOVE_FRAMES){
         this.wMoveTick=0;
-        this.wAng=Math.random()*6.28;
+        this.wAng=nextWeakMoveAngle(this.wAng);
         spawnPts(this.wx,this.wy,'#f44',10);
       }
     }
@@ -883,9 +906,7 @@ class Mineral {
 
       /* weak point */
       if(this.weakVisible()){
-        const grow=breakProgress;
-        const hitPop=this.wHitPulse;
-        const wp=8+grow*15+hitPop*7+Math.sin(this.wPulse*3)*(2+grow*2);
+        const wp=this.weakHitRadius();
         const wc=breakProgress>=0.75?'#ff4':'#f22';
         ctx.save();
         ctx.beginPath();ctx.arc(this.wx,this.wy,wp,0,6.28);
@@ -940,7 +961,7 @@ const plr={
   x:W/2, y:H-95,
   tx:W/2, ty:H-95,
   spd:3.8, r:16,
-  pAng:0, pSpd:.09, pOrbit:33, pLen:14, pickCount:6,
+  pAng:0, pSpd:Math.PI/18, pOrbit:33, pLen:14, pickCount:6,
 
   update(){
     let kx=(keys.d?1:0)-(keys.a?1:0);
@@ -968,6 +989,7 @@ const plr={
     for(let i=0;i<this.pickCount;i++){
       const a=this.pAng+i/this.pickCount*6.28;
       out.push({
+        i,
         x:this.x+Math.cos(a)*(this.pOrbit+this.pLen),
         y:this.y+Math.sin(a)*(this.pOrbit+this.pLen),
         a,
@@ -1156,23 +1178,27 @@ function checkMining(){
     if(m.mined) continue;
     for(const t of tips){
       const d=Math.hypot(t.x-m.x,t.y-m.y);
+      let contactType = '';
+      let isWeakHit = false;
 
       if(m.tier==='giant'){
         const wd=Math.hypot(t.x-m.wx,t.y-m.wy);
         const weakVisible=m.weakVisible();
-        if(weakVisible&&wd<WEAK_RADIUS){
-          if(m.hit(true,t.x,t.y)) spawnOre(m.x,m.y,m.val,m.col,m.tier);
-          break;
-        }
-        if(d<m.r+2){
-          if(m.hit(false,t.x,t.y)) spawnOre(m.x,m.y,m.val,m.col,m.tier);
-          break;
+        if(weakVisible&&wd<m.weakHitRadius()){
+          contactType = 'weak';
+          isWeakHit = true;
+        } else if(d<m.r+2){
+          contactType = 'body';
         }
       } else {
         if(d<m.r+6){
-          if(m.hit()) spawnOre(m.x,m.y,m.val,m.col,m.tier);
-          break;
+          contactType = 'body';
         }
+      }
+      if(!m.registerTipContact(t.i, contactType)) continue;
+      if(m.hit(isWeakHit, t.x, t.y)){
+        spawnOre(m.x,m.y,m.val,m.col,m.tier);
+        break;
       }
     }
   }
